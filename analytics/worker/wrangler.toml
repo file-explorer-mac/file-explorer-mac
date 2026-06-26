@@ -1,0 +1,19 @@
+name = "file-explorer-stats"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+workers_dev = false
+
+# Serve from a custom domain on your Cloudflare zone (DNS + TLS auto-provisioned).
+[[routes]]
+pattern = "file-explorer-analytics.appflare.io"
+custom_domain = true
+
+# D1 database binding. Create the DB with `wrangler d1 create file-explorer-stats`
+# and paste the printed database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "file-explorer-stats"
+database_id = "9adc0719-c395-4bc5-a281-89a2e3fe9f9a"
+
+# The /stats dashboard password is a secret, not stored here:
+#   wrangler secret put STATS_TOKEN

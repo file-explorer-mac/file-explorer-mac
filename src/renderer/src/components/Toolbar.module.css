@@ -1,0 +1,63 @@
+.toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--toolbar-h);
+  padding: 0 8px;
+  gap: 2px;
+  background: var(--window-bg);
+  border-bottom: 1px solid var(--stroke);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: var(--fs-14);
+  cursor: default;
+  user-select: none;
+}
+
+.button:hover {
+  background: var(--control-hover);
+}
+
+.button:active,
+.button.active {
+  background: var(--control-pressed);
+}
+
+.button:disabled {
+  color: var(--text-disabled);
+  background: transparent;
+  pointer-events: none;
+}
+
+.labeled {
+  padding: 0 10px;
+}
+
+.label {
+  line-height: 1;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--divider);
+  flex: none;
+}
+
+.right {
+  margin-left: auto;
+}

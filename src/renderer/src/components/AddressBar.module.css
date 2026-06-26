@@ -1,0 +1,211 @@
+.root {
+  display: flex;
+  align-items: center;
+  height: var(--addressbar-h);
+  padding: 0 10px;
+  gap: 6px;
+  background: var(--window-bg);
+}
+
+/* ---- nav buttons ---- */
+.navButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.navButton:hover:not(:disabled) {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.navButton:active:not(:disabled) {
+  background: var(--control-pressed);
+}
+
+.navButton:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+/* ---- breadcrumb container ---- */
+.breadcrumb {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
+  padding: 0 6px;
+  background: var(--layer-bg);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  /* The background acts as a click target to edit the path (familiar file-manager behavior). */
+  cursor: text;
+}
+
+.breadcrumb:focus-within {
+  border-color: var(--accent);
+}
+
+.crumbs {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  cursor: text;
+}
+
+.crumb {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  max-width: 220px;
+  padding: 0 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: var(--fs-13);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.crumb:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.crumbCurrent {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  max-width: 260px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: var(--fs-13);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+/* ---- inline edit input ---- */
+.editInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: var(--fs-13);
+}
+
+/* ---- refresh ---- */
+.refreshButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.refreshButton:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.refreshButton:active {
+  background: var(--control-pressed);
+}
+
+/* ---- search ---- */
+.search {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 240px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--layer-bg);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: var(--fs-13);
+}
+
+.searchInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.searchClear {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.searchClear:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}

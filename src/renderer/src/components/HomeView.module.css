@@ -1,0 +1,190 @@
+/* "Home" landing page: Quick access tiles + Recent/Favorites tabs.
+   Mirrors FileView's root so it sits in the same content frame. */
+.home {
+  flex: 1;
+  min-width: 0;
+  background: var(--content-bg);
+  border: 1px solid var(--stroke);
+  border-left: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  overflow: auto;
+  outline: none;
+}
+
+.inner {
+  padding: 20px 24px 32px;
+  max-width: 1080px;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ---- Quick access grid ---- */
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--radius-md);
+  background: var(--solid-bg);
+  color: var(--text-primary);
+  cursor: default;
+}
+.tile:hover {
+  background: var(--row-hover);
+}
+.tile:active {
+  background: var(--control-pressed);
+}
+
+.tileGlyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.accentIcon {
+  color: var(--accent);
+}
+
+.tileLabel {
+  font-size: var(--fs-13);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Recent / Favorites tabs ---- */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: -1px;
+  font-size: var(--fs-13);
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: default;
+}
+.tab:hover {
+  color: var(--text-primary);
+}
+.tabActive {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.clear {
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: var(--fs-12);
+  color: var(--accent);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+.clear:hover {
+  background: var(--control-hover);
+}
+
+/* ---- Recent / Favorites list ---- */
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+.row:hover {
+  background: var(--row-hover);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.rowName {
+  font-size: var(--fs-13);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-size: var(--fs-12);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  opacity: 0;
+}
+.row:hover .rowAction {
+  opacity: 1;
+}
+.rowAction:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.empty {
+  padding: 28px 8px;
+  color: var(--text-secondary);
+  font-size: var(--fs-13);
+  line-height: 1.5;
+}

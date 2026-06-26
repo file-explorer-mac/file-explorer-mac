@@ -1,0 +1,6 @@
+<svg width="1024" height="1024" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Same folder glyph used for directories inside the app (FileGlyph 'folder'). -->
+  <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h7.2l2.4 2.6h13.4A1.5 1.5 0 0 1 29 11.1v3H3z" fill="#e3a823"/>
+  <path d="M3 12.6A1.6 1.6 0 0 1 4.6 11h22.8A1.6 1.6 0 0 1 29 12.6v12.8A1.6 1.6 0 0 1 27.4 27H4.6A1.6 1.6 0 0 1 3 25.4z" fill="#ffce5c"/>
+  <path d="M3 12.6A1.6 1.6 0 0 1 4.6 11h22.8A1.6 1.6 0 0 1 29 12.6v1.2H3z" fill="#ffd980"/>
+</svg>

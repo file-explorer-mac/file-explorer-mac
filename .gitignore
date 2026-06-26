@@ -1,0 +1,19 @@
+node_modules
+out
+dist
+release
+coverage
+*.log
+.DS_Store
+.vite
+
+# Signing / notarization secrets — NEVER commit
+.env.signing
+*.p8
+*.p12
+*.cer
+*.provisionprofile
+
+# Analytics worker — local wrangler state & dev secrets
+.wrangler
+.dev.vars

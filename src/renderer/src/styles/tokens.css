@@ -1,0 +1,130 @@
+/*
+ * Core design tokens.
+ * Components must consume these variables rather than hard-coding colors,
+ * so light/dark themes and the overall look stay consistent.
+ */
+:root {
+  /* Accent */
+  --accent: #005fb8;
+  --accent-hover: #1a6fc4;
+  --accent-pressed: #4084c9;
+  --accent-fill-secondary: rgba(0, 95, 184, 0.9);
+
+  /* Surfaces */
+  --window-bg: #f3f3f3; /* translucent titlebar / toolbar zone */
+  --content-bg: #ffffff; /* file list canvas */
+  --sidebar-bg: #f9f9f9;
+  --layer-bg: #fbfbfb; /* address bar fields, etc. */
+  --solid-bg: #ffffff;
+  --tab-bar-bg: #f3f3f3;
+  --tab-active-bg: #ffffff;
+
+  /* Text */
+  --text-primary: #1a1a1a;
+  --text-secondary: #5f5f5f;
+  --text-tertiary: #8a8a8a;
+  --text-on-accent: #ffffff;
+  --text-disabled: #a6a6a6;
+
+  /* Strokes / dividers */
+  --stroke: #e5e5e5;
+  --stroke-strong: #d6d6d6;
+  --card-stroke: #ececec;
+  --divider: #ebebeb;
+
+  /* Control fills (subtle) */
+  --control-hover: rgba(0, 0, 0, 0.04);
+  --control-pressed: rgba(0, 0, 0, 0.06);
+  --control-selected: rgba(0, 95, 184, 0.08);
+  --row-hover: rgba(0, 0, 0, 0.035);
+  --row-selected: #e8f1fb;
+  --row-selected-hover: #dcebfb;
+  --row-selected-stroke: #cfe4f9;
+
+  /* Window controls */
+  --winctl-hover: rgba(0, 0, 0, 0.05);
+  --winctl-close-hover: #c42b1c;
+  --winctl-close-glyph-hover: #ffffff;
+
+  /* Geometry */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --titlebar-h: 40px;
+  --tabbar-h: 38px;
+  --toolbar-h: 48px;
+  --addressbar-h: 40px;
+  --statusbar-h: 26px;
+  --sidebar-w: 240px;
+
+  /* Shadow (flyouts / menus) */
+  --flyout-shadow: 0 8px 16px rgba(0, 0, 0, 0.14), 0 0 1px rgba(0, 0, 0, 0.2);
+  --flyout-bg: #fbfbfb;
+  --flyout-stroke: #e8e8e8;
+
+  /* Typography */
+  --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.22);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.36);
+
+  --skeleton-base: rgba(0, 0, 0, 0.06);
+  --skeleton-highlight: rgba(0, 0, 0, 0.11);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #4cc2ff;
+    --accent-hover: #47b1e8;
+    --accent-pressed: #42a1d2;
+    --accent-fill-secondary: rgba(76, 194, 255, 0.9);
+
+    --window-bg: #2b2b2b;
+    --content-bg: #272727;
+    --sidebar-bg: #2b2b2b;
+    --layer-bg: #303030;
+    --solid-bg: #2c2c2c;
+    --tab-bar-bg: #202020;
+    --tab-active-bg: #2b2b2b;
+
+    --text-primary: #ffffff;
+    --text-secondary: #cfcfcf;
+    --text-tertiary: #9a9a9a;
+    --text-on-accent: #000000;
+    --text-disabled: #6b6b6b;
+
+    --stroke: #3a3a3a;
+    --stroke-strong: #454545;
+    --card-stroke: #393939;
+    --divider: #373737;
+
+    --control-hover: rgba(255, 255, 255, 0.06);
+    --control-pressed: rgba(255, 255, 255, 0.08);
+    --control-selected: rgba(76, 194, 255, 0.12);
+    --row-hover: rgba(255, 255, 255, 0.05);
+    --row-selected: #2d3f50;
+    --row-selected-hover: #355068;
+    --row-selected-stroke: #3a536b;
+
+    --winctl-hover: rgba(255, 255, 255, 0.07);
+    --winctl-close-hover: #c42b1c;
+    --winctl-close-glyph-hover: #ffffff;
+
+    --flyout-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.6);
+    --flyout-bg: #2c2c2c;
+    --flyout-stroke: #3a3a3a;
+
+    --scrollbar-thumb: rgba(255, 255, 255, 0.24);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.4);
+
+    --skeleton-base: rgba(255, 255, 255, 0.07);
+    --skeleton-highlight: rgba(255, 255, 255, 0.14);
+
+    color-scheme: dark;
+  }
+}

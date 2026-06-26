@@ -1,0 +1,65 @@
+.banner {
+  position: fixed;
+  top: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--flyout-stroke);
+  background: var(--flyout-bg);
+  box-shadow: var(--flyout-shadow);
+  font-size: var(--fs-13);
+  color: var(--text-primary);
+  z-index: 2100;
+  max-width: 80%;
+}
+
+.action {
+  min-width: 72px;
+  padding: 5px 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font);
+  font-size: var(--fs-13);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.action:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.action:active {
+  background: var(--accent-pressed);
+  border-color: var(--accent-pressed);
+}
+
+.dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.error {
+  border-color: var(--danger, #d13438);
+}

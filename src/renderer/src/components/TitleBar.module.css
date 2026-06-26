@@ -1,0 +1,142 @@
+.bar {
+  display: flex;
+  align-items: flex-end;
+  height: var(--titlebar-h);
+  background: var(--tab-bar-bg);
+  user-select: none;
+  overflow: hidden;
+}
+
+.appIcon {
+  margin: 0 8px 11px 12px;
+  flex-shrink: 0;
+}
+
+.tabStrip {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  max-width: 200px;
+  min-width: 0;
+  padding: 0 8px 0 10px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  flex: 0 1 200px;
+}
+
+.tab:hover {
+  background: var(--control-hover);
+}
+
+.tabActive {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.tabActive:hover {
+  background: var(--tab-active-bg);
+}
+
+.tabGlyph {
+  flex-shrink: 0;
+}
+
+.tabLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-13);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  visibility: hidden;
+}
+
+.tab:hover .tabClose,
+.tabActive .tabClose {
+  visibility: visible;
+}
+
+.tabClose:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.newTab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin: 0 0 2px 2px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.newTab:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.winControls {
+  display: flex;
+  align-items: stretch;
+  margin-left: auto;
+  height: var(--titlebar-h);
+  flex-shrink: 0;
+}
+
+.winBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: default;
+}
+
+.winBtn:hover {
+  background: var(--winctl-hover);
+}
+
+.winBtnClose:hover {
+  background: var(--winctl-close-hover);
+  color: var(--winctl-close-glyph-hover);
+}

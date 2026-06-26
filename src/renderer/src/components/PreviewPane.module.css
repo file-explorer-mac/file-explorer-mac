@@ -1,0 +1,124 @@
+.pane {
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--stroke);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 8px 10px 14px;
+  border-bottom: 1px solid var(--stroke);
+  position: sticky;
+  top: 0;
+  background: var(--sidebar-bg);
+  z-index: 1;
+}
+
+.headerLabel {
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.closeBtn:active {
+  background: var(--control-pressed);
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  text-align: center;
+  font-size: var(--fs-13);
+  color: var(--text-secondary);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px;
+  gap: 12px;
+}
+
+.previewBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  min-height: 220px;
+}
+
+.name {
+  text-align: center;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 8px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--stroke);
+}
+
+.metaKey {
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}
+
+.metaVal {
+  margin: 0;
+  font-size: var(--fs-12);
+  color: var(--text-primary);
+  word-break: break-word;
+  text-align: right;
+}
+
+.textPreview {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--content-bg);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  color: var(--text-primary);
+}

@@ -1,0 +1,107 @@
+{
+  "name": "file-explorer",
+  "version": "1.0.0",
+  "description": "A modern, tabbed file manager for macOS (Intel & Apple Silicon)",
+  "main": "./out/main/index.js",
+  "author": "File Explorer",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "electron-vite build",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck:test": "tsc --noEmit -p tsconfig.vitest.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web && npm run typecheck:test",
+    "dist": "electron-vite build && electron-builder --mac --universal",
+    "dist:unsigned": "electron-vite build && electron-builder --mac --universal -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false",
+    "release": "electron-vite build && electron-builder --mac --universal --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^20.17.10",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "electron": "^41.9.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "jsdom": "^25.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.9"
+  },
+  "build": {
+    "appId": "com.fileexplorer.app",
+    "productName": "File Explorer",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "file-explorer-mac",
+      "repo": "file-explorer-mac"
+    },
+    "files": [
+      "out/**/*",
+      "!**/*.map"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
+      "extendInfo": {
+        "NSDesktopFolderUsageDescription": "File Explorer needs access to your Desktop folder to browse and manage files there.",
+        "NSDocumentsFolderUsageDescription": "File Explorer needs access to your Documents folder to browse and manage files there.",
+        "NSDownloadsFolderUsageDescription": "File Explorer needs access to your Downloads folder to browse and manage files there.",
+        "NSRemovableVolumesUsageDescription": "File Explorer needs access to removable volumes to browse and manage files on them.",
+        "NSNetworkVolumesUsageDescription": "File Explorer needs access to network volumes to browse and manage files on them.",
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Folder",
+            "CFBundleTypeRole": "Viewer",
+            "LSItemContentTypes": [
+              "public.folder"
+            ],
+            "LSHandlerRank": "Alternate"
+          }
+        ]
+      }
+    },
+    "dmg": {
+      "title": "File Explorer"
+    }
+  }
+}

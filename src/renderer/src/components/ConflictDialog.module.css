@@ -1,0 +1,153 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 24px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  max-width: 100%;
+  padding: 20px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-lg);
+  background: var(--flyout-bg);
+  box-shadow: var(--flyout-shadow);
+  color: var(--text-primary);
+  font-family: var(--font);
+}
+
+.header {
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  font-size: var(--fs-13);
+  color: var(--text-secondary);
+}
+
+.list {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  background: var(--layer-bg);
+}
+
+.list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: var(--fs-13);
+  color: var(--text-primary);
+}
+
+.glyph {
+  flex-shrink: 0;
+}
+
+.name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.primary,
+.secondary,
+.cancel {
+  min-width: 88px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font);
+  font-size: var(--fs-13);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--stroke-strong);
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.primary:active {
+  background: var(--accent-pressed);
+  border-color: var(--accent-pressed);
+}
+
+.secondary {
+  background: var(--layer-bg);
+  color: var(--text-primary);
+}
+
+.secondary:hover {
+  background: var(--control-hover);
+}
+
+.secondary:active {
+  background: var(--control-pressed);
+}
+
+.cancel {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.cancel:hover {
+  background: var(--control-hover);
+  color: var(--text-primary);
+}
+
+.cancel:active {
+  background: var(--control-pressed);
+}
