@@ -1,19 +1,8 @@
-# Homebrew Cask for File Explorer.
-#
-# Submit to homebrew/cask AFTER v1.0.0 is published as a GitHub Release. Before
-# submitting, fill in the real sha256 of the published universal .dmg:
-#
-#   shasum -a 256 "File Explorer-1.0.0-universal.dmg"
-#
-# NOTE: GitHub release-asset URLs replace spaces with ".". Either match the
-# uploaded asset name exactly, or (recommended) set electron-builder's
-# `artifactName` to a space-free name like "FileExplorer-${version}-universal.dmg"
-# so the cask URL is clean and passes `brew audit`.
 cask "file-explorer" do
   version "1.0.0"
-  sha256 "REPLACE_WITH_DMG_SHA256"
+  sha256 "c1d15f72c013be9a2a27ad3ef8c818c7a46b9ee43ff10850ce4761d49e6e3649"
 
-  url "https://github.com/file-explorer-mac/file-explorer-mac/releases/download/v#{version}/File.Explorer-#{version}-universal.dmg",
+  url "https://github.com/file-explorer-mac/file-explorer-mac/releases/download/v#{version}/File-Explorer-#{version}-universal.dmg",
       verified: "github.com/file-explorer-mac/file-explorer-mac/"
   name "File Explorer"
   desc "Modern, tabbed file manager for macOS"

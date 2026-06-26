@@ -9,7 +9,7 @@ built for both Apple Silicon and Intel.
 
 [![Download](https://img.shields.io/github/v/release/file-explorer-mac/file-explorer-mac?label=Download&style=for-the-badge)](https://github.com/file-explorer-mac/file-explorer-mac/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/macOS-Universal%20(Apple%20Silicon%20%2B%20Intel)-black?style=for-the-badge&logo=apple)](#download)
+[![Platform](https://img.shields.io/badge/macOS-Universal%20(Apple%20Silicon%20%2B%20Intel)-black?style=for-the-badge&logo=apple)](https://github.com/file-explorer-mac/file-explorer-mac#-download)
 
 <img src="docs/screenshots/hero.png" alt="File Explorer for macOS — a modern, tabbed file manager" width="820">
 
