@@ -206,6 +206,31 @@ describe('Menu', () => {
     })
   })
 
+  describe('leading gutter', () => {
+    it('reserves exactly one gutter per row, whatever the row carries', () => {
+      const items: MenuItem[] = [
+        { label: 'Checked', checked: true },
+        { label: 'Iconed', icon: 'copy' },
+        { label: 'Bare' }
+      ]
+      const { container } = render(<Menu items={items} x={0} y={0} onClose={vi.fn()} />)
+      const rows = container.querySelectorAll('[role="menuitem"]')
+      // One gutter each — not a checkmark column plus an icon column — so every
+      // label lands on the same left edge.
+      for (const r of rows) expect(r.querySelectorAll('.gutter')).toHaveLength(1)
+      // A bare row keeps its gutter empty rather than pulling the label left.
+      expect(rows[2].querySelector('.gutter')!.children).toHaveLength(0)
+      expect(rows[0].querySelector('.gutter')!.className).toMatch(/gutterChecked/)
+      expect(rows[1].querySelector('.gutter')!.className).not.toMatch(/gutterChecked/)
+    })
+
+    it('shows the checkmark rather than the icon when a row has both', () => {
+      const items: MenuItem[] = [{ label: 'Both', icon: 'copy', checked: true }]
+      const { container } = render(<Menu items={items} x={0} y={0} onClose={vi.fn()} />)
+      expect(container.querySelector('.gutter')!.className).toMatch(/gutterChecked/)
+    })
+  })
+
   describe('submenus', () => {
     const subItems: MenuItem[] = [
       {

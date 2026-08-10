@@ -498,6 +498,21 @@ describe('ContextMenu', () => {
       expect(screen.getByText('Make available offline')).toBeInTheDocument()
     })
 
+    it('adds no cloud section at all when neither entry applies', () => {
+      // Google Drive has no derivable web URL, and a downloaded file has nothing
+      // to fetch — so the separator must not be left dangling on its own.
+      openItemMenu(
+        makeFileItem({ name: 'a.txt', path: '/p/a.txt' }),
+        cloud({ provider: 'googledrive', dataless: false })
+      )
+      const { container } = render(<ContextMenu />)
+      expect(screen.queryByText(/^Open on /)).toBeNull()
+      expect(screen.queryByText('Make available offline')).toBeNull()
+      // Properties is the last row; nothing trails it.
+      const rows = container.querySelectorAll('[role="menuitem"]')
+      expect(rows[rows.length - 1].textContent).toContain('Properties')
+    })
+
     it('hides the download for a file that is already on disk', () => {
       openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), cloud({ dataless: false }))
       render(<ContextMenu />)
@@ -533,6 +548,57 @@ describe('ContextMenu', () => {
       })
       render(<ContextMenu />)
       expect(screen.getByText('Open on Dropbox')).toBeInTheDocument()
+    })
+  })
+
+  describe('add to category', () => {
+    const folder = (): ReturnType<typeof makeFolder> =>
+      makeFolder({ name: 'docs', path: '/p/docs' })
+
+    it('is offered for folders only', async () => {
+      openItemMenu(folder())
+      const { unmount } = render(<ContextMenu />)
+      expect(screen.getByText('Add to category')).toBeInTheDocument()
+      unmount()
+
+      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }))
+      render(<ContextMenu />)
+      expect(screen.queryByText('Add to category')).toBeNull()
+    })
+
+    it('adds the folder to an existing category', async () => {
+      const user = userEvent.setup()
+      openItemMenu(folder(), {
+        categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+      })
+      render(<ContextMenu />)
+      await user.click(screen.getByText('Add to category'))
+      await user.click(screen.getByText('Work'))
+      expect(useExplorerStore.getState().categories[0].paths).toEqual(['/p/docs'])
+    })
+
+    it('shows a category the folder is already in as done and inert', async () => {
+      const user = userEvent.setup()
+      openItemMenu(folder(), {
+        categories: [{ id: 'c1', name: 'Work', paths: ['/p/docs'], collapsed: false }]
+      })
+      render(<ContextMenu />)
+      await user.click(screen.getByText('Add to category'))
+      const row = screen.getByText('Work').closest('[role="menuitem"]')!
+      expect(row).toHaveAttribute('aria-disabled', 'true')
+      expect(row.querySelector('.gutterChecked')).not.toBeNull()
+    })
+
+    it('creates a new category seeded with the folder and its name', async () => {
+      const user = userEvent.setup()
+      openItemMenu(folder())
+      render(<ContextMenu />)
+      await user.click(screen.getByText('Add to category'))
+      await user.click(screen.getByText('New category…'))
+      const [created] = useExplorerStore.getState().categories
+      expect(created).toMatchObject({ name: 'docs', paths: ['/p/docs'] })
+      // Created then opened for renaming, so the suggested name is editable.
+      expect(useExplorerStore.getState().renamingCategoryId).toBe(created.id)
     })
   })
 

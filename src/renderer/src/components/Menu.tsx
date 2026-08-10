@@ -156,8 +156,20 @@ export const Menu: React.FC<MenuProps> = ({
             }}
             onClick={(e) => handleItem(item, i, e.currentTarget)}
           >
-            <span className={styles.check}>{item.checked ? <Icon name="check" size={15} /> : null}</span>
-            <span className={styles.icon}>{item.icon ? <Icon name={item.icon} size={16} /> : null}</span>
+            {/*
+              One shared gutter, not a checkmark column plus an icon column.
+              Reserving it unconditionally keeps every label on the same left
+              edge whether or not the row has a glyph — a ragged text edge reads
+              worse than a little empty space, and inventing an icon for every
+              row just to fill it produces meaningless glyphs.
+            */}
+            <span className={`${styles.gutter} ${item.checked ? styles.gutterChecked : ''}`}>
+              {item.checked ? (
+                <Icon name="check" size={15} />
+              ) : item.icon ? (
+                <Icon name={item.icon} size={16} />
+              ) : null}
+            </span>
             <span className={styles.label}>{item.label}</span>
             {item.shortcut ? <span className={styles.shortcut}>{item.shortcut}</span> : null}
             {hasSub ? (

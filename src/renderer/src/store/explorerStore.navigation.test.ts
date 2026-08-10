@@ -532,3 +532,103 @@ describe('setSidebarWidth', () => {
     expect(s().sidebarWidth).toBe(SIDEBAR_MIN_WIDTH)
   })
 })
+
+describe('sidebar categories', () => {
+  const cats = (): ReturnType<typeof useExplorerStore.getState>['categories'] =>
+    useExplorerStore.getState().categories
+
+  it('creates a category and opens its title for renaming', () => {
+    const id = store().addCategory()
+    expect(cats()).toHaveLength(1)
+    expect(cats()[0]).toMatchObject({ id, name: 'New category', paths: [], collapsed: false })
+    // Same convention as a new folder: created, then immediately editable.
+    expect(useExplorerStore.getState().renamingCategoryId).toBe(id)
+  })
+
+  it('seeds a category with a name and folders', () => {
+    store().addCategory('  Work  ', ['/p/a'])
+    expect(cats()[0]).toMatchObject({ name: 'Work', paths: ['/p/a'] })
+  })
+
+  it('falls back to a default name when given only whitespace', () => {
+    store().addCategory('   ')
+    expect(cats()[0].name).toBe('New category')
+  })
+
+  it('renames a category and leaves rename mode', () => {
+    const id = store().addCategory()
+    store().renameCategory(id, '  Clients ')
+    expect(cats()[0].name).toBe('Clients')
+    expect(useExplorerStore.getState().renamingCategoryId).toBeNull()
+  })
+
+  it('keeps the old name when the rename is blank', () => {
+    const id = store().addCategory('Work')
+    store().renameCategory(id, '   ')
+    expect(cats()[0].name).toBe('Work')
+    expect(useExplorerStore.getState().renamingCategoryId).toBeNull()
+  })
+
+  it('deletes a category, and clears rename mode if it was the one being renamed', () => {
+    const id = store().addCategory()
+    store().deleteCategory(id)
+    expect(cats()).toHaveLength(0)
+    expect(useExplorerStore.getState().renamingCategoryId).toBeNull()
+  })
+
+  it('leaves another category rename alone when deleting', () => {
+    const keep = store().addCategory('Keep')
+    const drop = store().addCategory('Drop')
+    store().beginRenameCategory(keep)
+    store().deleteCategory(drop)
+    expect(useExplorerStore.getState().renamingCategoryId).toBe(keep)
+    expect(cats().map((c) => c.name)).toEqual(['Keep'])
+  })
+
+  it('toggles collapsed independently per category', () => {
+    const a = store().addCategory('A')
+    store().addCategory('B')
+    store().toggleCategory(a)
+    expect(cats().map((c) => c.collapsed)).toEqual([true, false])
+    store().toggleCategory(a)
+    expect(cats().map((c) => c.collapsed)).toEqual([false, false])
+  })
+
+  it('adds folders and ignores ones already in the category', () => {
+    const id = store().addCategory('Work', ['/p/a'])
+    store().addToCategory(id, ['/p/a', '/p/b'])
+    expect(cats()[0].paths).toEqual(['/p/a', '/p/b'])
+  })
+
+  it('only touches the target category when adding', () => {
+    const a = store().addCategory('A')
+    store().addCategory('B')
+    store().addToCategory(a, ['/p/x'])
+    expect(cats()[0].paths).toEqual(['/p/x'])
+    expect(cats()[1].paths).toEqual([])
+  })
+
+  it('removes a folder without disturbing the others', () => {
+    const id = store().addCategory('Work', ['/p/a', '/p/b'])
+    const other = store().addCategory('Other', ['/p/a'])
+    store().removeFromCategory(id, '/p/a')
+    expect(cats().find((c) => c.id === id)!.paths).toEqual(['/p/b'])
+    // The same folder can live in several categories; only this one loses it.
+    expect(cats().find((c) => c.id === other)!.paths).toEqual(['/p/a'])
+  })
+
+  it('gives each category a distinct id', () => {
+    const a = store().addCategory('A')
+    const b = store().addCategory('B')
+    expect(a).not.toBe(b)
+  })
+})
+
+describe('renameCategory with several categories', () => {
+  it('renames only the target and leaves its siblings untouched', () => {
+    const a = store().addCategory('A')
+    store().addCategory('B')
+    store().renameCategory(a, 'Renamed')
+    expect(useExplorerStore.getState().categories.map((c) => c.name)).toEqual(['Renamed', 'B'])
+  })
+})

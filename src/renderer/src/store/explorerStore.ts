@@ -6,7 +6,8 @@ import type {
   DriveItem,
   FileItem,
   OpProgress,
-  QuickLink
+  QuickLink,
+  SidebarCategory
 } from '@shared/types'
 import { kindLabel } from '@shared/fileKinds'
 import { basename, parentPath, HOME_PATH } from '@/utils/pathUtils'
@@ -51,6 +52,7 @@ export const SIDEBAR_MAX_WIDTH = 520
 /** Persisted user preferences (localStorage). */
 interface Prefs {
   pinnedLinks: QuickLink[]
+  categories: SidebarCategory[]
   previewOpen: boolean
   previewWidth: number
   sidebarWidth: number
@@ -136,6 +138,11 @@ interface ExplorerState {
   previewWidth: number
   sidebarWidth: number
   pinnedLinks: QuickLink[]
+
+  /** User-made sidebar groups, shown between Quick access and This PC. */
+  categories: SidebarCategory[]
+  /** Category whose title is currently being edited inline; null when none. */
+  renamingCategoryId: string | null
 
   /** Cloud sync folders on this machine, listed under "This PC". */
   cloudRoots: CloudRoot[]
@@ -248,6 +255,17 @@ interface ExplorerState {
   /** Opens a folder in a background-created tab (middle-click / context menu). */
   openInNewTab: (path: string) => void
 
+  // Sidebar categories
+  /** Creates a category and puts its title straight into rename mode. */
+  addCategory: (name?: string, paths?: string[]) => string
+  renameCategory: (id: string, name: string) => void
+  deleteCategory: (id: string) => void
+  toggleCategory: (id: string) => void
+  beginRenameCategory: (id: string | null) => void
+  /** Adds folders to a category, ignoring ones already in it. */
+  addToCategory: (id: string, paths: string[]) => void
+  removeFromCategory: (id: string, path: string) => void
+
   // Quick access pins
   pinToQuickAccess: (path: string, name: string) => void
   unpinFromQuickAccess: (path: string) => void
@@ -294,6 +312,10 @@ interface ExplorerState {
 let tabCounter = 0
 const newTabId = (): string => `tab-${++tabCounter}`
 
+let categoryCounter = 0
+/** Unique within a session; persisted categories keep whatever id they were saved with. */
+const newCategoryId = (): string => `cat-${Date.now().toString(36)}-${++categoryCounter}`
+
 // Monotonic token: every items-producing async op (loadDir/runSearch) bumps it,
 // and only the most recent op is allowed to commit results. Kills stale-load races.
 let loadSeq = 0
@@ -309,6 +331,7 @@ let progressSubscribed = false
 function persist(s: ExplorerState): void {
   savePrefs({
     pinnedLinks: s.pinnedLinks,
+    categories: s.categories,
     previewOpen: s.previewOpen,
     previewWidth: s.previewWidth,
     sidebarWidth: s.sidebarWidth,
@@ -348,6 +371,9 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   previewWidth: initialPrefs.previewWidth ?? PREVIEW_DEFAULT_WIDTH,
   sidebarWidth: initialPrefs.sidebarWidth ?? SIDEBAR_DEFAULT_WIDTH,
   pinnedLinks: initialPrefs.pinnedLinks ?? [],
+
+  categories: initialPrefs.categories ?? [],
+  renamingCategoryId: null,
 
   cloudRoots: [],
   contextCloud: null,
@@ -842,6 +868,69 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     const id = newTabId()
     // Opens in the background, like a browser's middle-click.
     set((s) => ({ tabs: [...s.tabs, { id, history: [path], index: 0 }] }))
+  },
+
+  addCategory: (name, paths) => {
+    const id = newCategoryId()
+    const category: SidebarCategory = {
+      id,
+      name: name?.trim() || 'New category',
+      paths: paths ?? [],
+      collapsed: false
+    }
+    // New categories open in rename mode, the way a new folder does.
+    set((s) => ({ categories: [...s.categories, category], renamingCategoryId: id }))
+    persist(get())
+    return id
+  },
+
+  renameCategory: (id, name) => {
+    const trimmed = name.trim()
+    set((s) => ({
+      // An empty name would leave an unclickable blank row; keep the old one.
+      categories: trimmed
+        ? s.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c))
+        : s.categories,
+      renamingCategoryId: null
+    }))
+    persist(get())
+  },
+
+  deleteCategory: (id) => {
+    set((s) => ({
+      categories: s.categories.filter((c) => c.id !== id),
+      renamingCategoryId: s.renamingCategoryId === id ? null : s.renamingCategoryId
+    }))
+    persist(get())
+  },
+
+  toggleCategory: (id) => {
+    set((s) => ({
+      categories: s.categories.map((c) => (c.id === id ? { ...c, collapsed: !c.collapsed } : c))
+    }))
+    persist(get())
+  },
+
+  beginRenameCategory: (id) => set({ renamingCategoryId: id }),
+
+  addToCategory: (id, paths) => {
+    set((s) => ({
+      categories: s.categories.map((c) =>
+        c.id === id
+          ? { ...c, paths: [...c.paths, ...paths.filter((p) => !c.paths.includes(p))] }
+          : c
+      )
+    }))
+    persist(get())
+  },
+
+  removeFromCategory: (id, path) => {
+    set((s) => ({
+      categories: s.categories.map((c) =>
+        c.id === id ? { ...c, paths: c.paths.filter((p) => p !== path) } : c
+      )
+    }))
+    persist(get())
   },
 
   pinToQuickAccess: (path, name) => {

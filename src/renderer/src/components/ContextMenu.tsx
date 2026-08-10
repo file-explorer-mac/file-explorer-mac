@@ -86,6 +86,9 @@ const ContextMenu: React.FC = () => {
   const openCloudOnWeb = useExplorerStore((s) => s.openCloudOnWeb)
   const makeAvailableOffline = useExplorerStore((s) => s.makeAvailableOffline)
   const openInNewTab = useExplorerStore((s) => s.openInNewTab)
+  const categories = useExplorerStore((s) => s.categories)
+  const addToCategory = useExplorerStore((s) => s.addToCategory)
+  const addCategory = useExplorerStore((s) => s.addCategory)
 
   if (contextMenu === null) return null
 
@@ -129,6 +132,30 @@ const ContextMenu: React.FC = () => {
             {
               label: 'Open in new tab',
               onClick: () => openInNewTab(target)
+            } as MenuItem
+          ]
+        : []),
+      ...(canPin
+        ? [
+            {
+              label: 'Add to category',
+              icon: 'star',
+              submenu: [
+                ...categories.map((c) => ({
+                  label: c.name,
+                  // Already there → nothing to do, so show it as done and inert.
+                  checked: c.paths.includes(target),
+                  disabled: c.paths.includes(target),
+                  onClick: () => addToCategory(c.id, [target])
+                })),
+                ...(categories.length ? [{ type: 'separator' as const }] : []),
+                {
+                  label: 'New category…',
+                  icon: 'add',
+                  // Seeded with this folder, then its title opens for renaming.
+                  onClick: () => addCategory(targetItem?.name, [target])
+                }
+              ]
             } as MenuItem
           ]
         : []),
