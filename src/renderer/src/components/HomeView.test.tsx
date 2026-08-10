@@ -129,41 +129,77 @@ describe('HomeView', () => {
     ).toBeInTheDocument()
   })
 
-  it('switches to the Favorites tab and shows its empty state', async () => {
+  it('gives every sidebar category its own tab and lists its contents', async () => {
     const user = userEvent.setup()
-    render(<HomeView />)
-    await user.click(screen.getByRole('button', { name: /Favorites/ }))
-    expect(screen.getByText(/No favorites yet/)).toBeInTheDocument()
-    // Clear button is only for the recent tab.
-    expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument()
-  })
-
-  it('lists favorite items and removes one via the row action', async () => {
-    const user = userEvent.setup()
-    useExplorerStore.setState({ favorites: ['/Users/test/fav'], homeDir: '/Users/test' })
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: ['/Users/test/proj'], collapsed: false }],
+      homeDir: '/Users/test'
+    })
     api.getFileItem.mockResolvedValue({
       ok: true,
-      data: makeFolder({ name: 'fav', path: '/Users/test/fav' })
+      data: makeFolder({ name: 'proj', path: '/Users/test/proj' })
     })
     render(<HomeView />)
-    await user.click(screen.getByRole('button', { name: /Favorites/ }))
-    await screen.findByText('fav')
-    await user.click(screen.getByRole('button', { name: 'Remove from Favorites' }))
-    expect(useExplorerStore.getState().favorites).toEqual([])
+    await user.click(screen.getByRole('button', { name: /Work/ }))
+    expect(await screen.findByText('proj')).toBeInTheDocument()
   })
 
-  it('opens a favorite folder on double click (directory → navigateTo)', async () => {
+  it('removes an item from a category via the row action', async () => {
     const user = userEvent.setup()
-    useExplorerStore.setState({ favorites: ['/Users/test/fav'], homeDir: '/Users/test' })
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: ['/Users/test/proj'], collapsed: false }],
+      homeDir: '/Users/test'
+    })
     api.getFileItem.mockResolvedValue({
       ok: true,
-      data: makeFolder({ name: 'fav', path: '/Users/test/fav' })
+      data: makeFolder({ name: 'proj', path: '/Users/test/proj' })
     })
     render(<HomeView />)
-    await user.click(screen.getByRole('button', { name: /Favorites/ }))
-    await screen.findByText('fav')
-    await user.dblClick(screen.getByText('fav'))
-    await waitFor(() => expect(useExplorerStore.getState().currentPath).toBe('/Users/test/fav'))
+    await user.click(screen.getByRole('button', { name: /Work/ }))
+    await screen.findByText('proj')
+    await user.click(screen.getByRole('button', { name: 'Remove from Work' }))
+    expect(useExplorerStore.getState().categories[0].paths).toEqual([])
+  })
+
+  it('opens a category folder on double click (directory → navigateTo)', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: ['/Users/test/proj'], collapsed: false }],
+      homeDir: '/Users/test'
+    })
+    api.getFileItem.mockResolvedValue({
+      ok: true,
+      data: makeFolder({ name: 'proj', path: '/Users/test/proj' })
+    })
+    render(<HomeView />)
+    await user.click(screen.getByRole('button', { name: /Work/ }))
+    await screen.findByText('proj')
+    await user.dblClick(screen.getByText('proj'))
+    await waitFor(() => expect(useExplorerStore.getState().currentPath).toBe('/Users/test/proj'))
+  })
+
+  it('shows an empty category\u2019s own prompt', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
+    render(<HomeView />)
+    await user.click(screen.getByRole('button', { name: /Work/ }))
+    expect(screen.getByText(/Nothing in/)).toBeInTheDocument()
+  })
+
+  it('falls back to Recent when the selected category is deleted', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
+    const { rerender } = render(<HomeView />)
+    await user.click(screen.getByRole('button', { name: /Work/ }))
+    useExplorerStore.setState({ categories: [] })
+    rerender(<HomeView />)
+    expect(
+      screen.getByText('Files and folders you open will show up here.')
+    ).toBeInTheDocument()
   })
 
   it('ignores a late resolution after unmount (alive guard)', async () => {
@@ -186,9 +222,12 @@ describe('HomeView', () => {
 
   it('switches back to the Recent tab', async () => {
     const user = userEvent.setup()
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
     render(<HomeView />)
-    await user.click(screen.getByRole('button', { name: /Favorites/ }))
-    expect(screen.getByText(/No favorites yet/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Work/ }))
+    expect(screen.getByText(/Nothing in/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Recent/ }))
     expect(
       screen.getByText('Files and folders you open will show up here.')

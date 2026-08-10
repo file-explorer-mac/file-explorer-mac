@@ -202,26 +202,6 @@ describe('ContextMenu', () => {
       expect(unpinFromQuickAccess).toHaveBeenCalledWith('/p/d')
     })
 
-    it('adds a target to Favorites when not yet favorited', async () => {
-      const addFavorite = spyAction('addFavorite')
-      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), { favorites: [] })
-      render(<ContextMenu />)
-      expect(screen.getByText('Add to Favorites')).toBeInTheDocument()
-      await clickItem('Add to Favorites')
-      expect(addFavorite).toHaveBeenCalledWith('/p/a.txt')
-    })
-
-    it('removes a target from Favorites when already favorited', async () => {
-      const removeFavorite = spyAction('removeFavorite')
-      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), {
-        favorites: ['/p/a.txt']
-      })
-      render(<ContextMenu />)
-      expect(screen.getByText('Remove from Favorites')).toBeInTheDocument()
-      await clickItem('Remove from Favorites')
-      expect(removeFavorite).toHaveBeenCalledWith('/p/a.txt')
-    })
-
     it('Copy as path runs copyPathSelection', async () => {
       const copyPathSelection = spyAction('copyPathSelection')
       openItemMenu()
@@ -555,15 +535,17 @@ describe('ContextMenu', () => {
     const folder = (): ReturnType<typeof makeFolder> =>
       makeFolder({ name: 'docs', path: '/p/docs' })
 
-    it('is offered for folders only', async () => {
+    it('is offered for files as well as folders', async () => {
       openItemMenu(folder())
       const { unmount } = render(<ContextMenu />)
       expect(screen.getByText('Pin to Category')).toBeInTheDocument()
       unmount()
 
+      // Unlike Quick access, a category can hold a file too.
       openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }))
       render(<ContextMenu />)
-      expect(screen.queryByText('Pin to Category')).toBeNull()
+      expect(screen.getByText('Pin to Category')).toBeInTheDocument()
+      expect(screen.queryByText('Pin to Quick access')).toBeNull()
     })
 
     it('adds the folder to an existing category', async () => {

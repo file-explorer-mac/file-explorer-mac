@@ -342,7 +342,7 @@ describe('NavigationPane — categories', () => {
   it('tells an empty category what it is for', () => {
     useExplorerStore.setState({ categories: [seed({ paths: [] })] })
     render(<NavigationPane />)
-    expect(screen.getByText('Drag folders here')).toBeInTheDocument()
+    expect(screen.getByText('Drag files or folders here')).toBeInTheDocument()
   })
 
   it('creates a category from the New category row', async () => {
@@ -474,5 +474,97 @@ describe('NavigationPane — categories', () => {
       fireEvent.contextMenu(container.querySelector('.categoryHeader') as HTMLElement)
       expect(screen.getByText('Delete category')).toBeInTheDocument()
     })
+  })
+})
+
+describe('NavigationPane — files pinned in a category', () => {
+  const withCategory = (paths: string[]): void => {
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths, collapsed: false }]
+    })
+  }
+
+  it('opens a pinned file instead of navigating to it', async () => {
+    const user = userEvent.setup()
+    const file = makeFileItem({ name: 'spec.pdf', path: '/p/spec.pdf' })
+    api.getFileItem.mockResolvedValue({ ok: true, data: file })
+    withCategory(['/p/spec.pdf'])
+    render(<NavigationPane />)
+
+    // The unresolved fallback row shows the same basename, so wait for the
+    // file-only affordance before clicking.
+    await screen.findByTitle('Remove from category')
+    await user.click(screen.getByText('spec.pdf'))
+    expect(api.openPath).toHaveBeenCalledWith('/p/spec.pdf')
+    // A file is not a location, so the current folder must not change.
+    expect(useExplorerStore.getState().currentPath).not.toBe('/p/spec.pdf')
+  })
+
+  it('gives a pinned file no expand control', async () => {
+    const file = makeFileItem({ name: 'spec.pdf', path: '/p/spec.pdf' })
+    api.getFileItem.mockResolvedValue({ ok: true, data: file })
+    withCategory(['/p/spec.pdf'])
+    const { container } = render(<NavigationPane />)
+    await screen.findByTitle('Remove from category')
+    expect(container.querySelector('.chevronSpacer')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Expand' })).toBeNull()
+  })
+
+  it('removes a pinned file from its category', async () => {
+    const user = userEvent.setup()
+    api.getFileItem.mockResolvedValue({
+      ok: true,
+      data: makeFileItem({ name: 'spec.pdf', path: '/p/spec.pdf' })
+    })
+    withCategory(['/p/spec.pdf'])
+    render(<NavigationPane />)
+    await user.click(await screen.findByTitle('Remove from category'))
+    expect(useExplorerStore.getState().categories[0].paths).toEqual([])
+  })
+
+  it('keeps folders expandable alongside files', async () => {
+    api.getFileItem.mockResolvedValue({
+      ok: true,
+      data: makeFolder({ name: 'proj', path: '/p/proj' })
+    })
+    withCategory(['/p/proj'])
+    render(<NavigationPane />)
+    await screen.findByText('proj')
+    expect(screen.getByRole('button', { name: 'Expand' })).toBeInTheDocument()
+  })
+
+  it('falls back to the basename until an entry resolves', () => {
+    api.getFileItem.mockReturnValue(new Promise(() => {}))
+    withCategory(['/p/unresolved'])
+    render(<NavigationPane />)
+    expect(screen.getByText('unresolved')).toBeInTheDocument()
+  })
+})
+
+describe('NavigationPane — the New category affordance', () => {
+  it('is a labelled row while there are no categories', () => {
+    render(<NavigationPane />)
+    expect(screen.getByText('New category')).toBeInTheDocument()
+    expect(screen.queryByLabelText('New category')).toBeNull()
+  })
+
+  it('demotes to a small corner button once a category exists', () => {
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
+    render(<NavigationPane />)
+    // The explanatory row is gone; only the compact button remains.
+    expect(screen.queryByText('New category')).toBeNull()
+    expect(screen.getByLabelText('New category')).toBeInTheDocument()
+  })
+
+  it('still creates a category from the corner button', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
+    render(<NavigationPane />)
+    await user.click(screen.getByLabelText('New category'))
+    expect(useExplorerStore.getState().categories).toHaveLength(2)
   })
 })

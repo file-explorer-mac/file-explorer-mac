@@ -108,6 +108,45 @@ function droppedPaths(dt: DataTransfer): string[] {
     .filter(Boolean)
 }
 
+/**
+ * A file pinned into a category. Unlike a folder it has nothing to expand, so it
+ * gets a spacer where the chevron would be and opens on click.
+ */
+const CategoryFileRow: React.FC<{ item: FileItem; onRemove: () => void }> = ({
+  item,
+  onRemove
+}) => {
+  const openItem = useExplorerStore((s) => s.openItem)
+  return (
+    <div className={styles.node}>
+      <div
+        className={styles.nodeRow}
+        style={{ paddingLeft: 4 }}
+        onClick={() => void openItem(item)}
+        title={item.name}
+      >
+        <span className={styles.chevronSpacer} />
+        <span className={styles.nodeIcon}>
+          <FileGlyph kind={item.kind} ext={item.ext} size={16} />
+        </span>
+        <span className={styles.nodeLabel}>{item.name}</span>
+        <button
+          type="button"
+          className={styles.unpin}
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          title="Remove from category"
+          tabIndex={-1}
+        >
+          <Icon name="close" size={11} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 interface CategorySectionProps {
   category: SidebarCategory
   onOpenMenu: (id: string, x: number, y: number) => void
@@ -124,8 +163,27 @@ const CategorySection: React.FC<CategorySectionProps> = ({ category, onOpenMenu 
   const removeFromCategory = useExplorerStore((s) => s.removeFromCategory)
   const renamingCategoryId = useExplorerStore((s) => s.renamingCategoryId)
   const [dragOver, setDragOver] = useState(false)
+  const [resolved, setResolved] = useState<Record<string, FileItem>>({})
   const inputRef = useRef<HTMLInputElement>(null)
   const renaming = renamingCategoryId === category.id
+
+  // Resolve entries so files can be told from folders (and get a real glyph).
+  const pathKey = category.paths.join(' ')
+  useEffect(() => {
+    let alive = true
+    void Promise.all(category.paths.map((p) => window.api.getFileItem(p))).then((results) => {
+      if (!alive) return
+      const next: Record<string, FileItem> = {}
+      results.forEach((r) => {
+        if (r.ok && r.data) next[r.data.path] = r.data
+      })
+      setResolved(next)
+    })
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathKey])
 
   // Select the whole name on entry so typing replaces the placeholder.
   useEffect(() => {
@@ -208,18 +266,29 @@ const CategorySection: React.FC<CategorySectionProps> = ({ category, onOpenMenu 
       {!category.collapsed ? (
         <div className={styles.tree}>
           {category.paths.length === 0 ? (
-            <div className={styles.categoryEmpty}>Drag folders here</div>
+            <div className={styles.categoryEmpty}>Drag files or folders here</div>
           ) : (
-            category.paths.map((p) => (
-              <TreeNode
-                key={p}
-                path={p}
-                label={basename(p)}
-                depth={0}
-                icon={<FileGlyph kind="folder" size={16} />}
-                onUnpin={() => removeFromCategory(category.id, p)}
-              />
-            ))
+            category.paths.map((p) => {
+              const item = resolved[p]
+              // Folders expand and navigate; files just open. Until an entry
+              // resolves, assume a folder so the row doesn't flicker.
+              return item && !item.isDirectory ? (
+                <CategoryFileRow
+                  key={p}
+                  item={item}
+                  onRemove={() => removeFromCategory(category.id, p)}
+                />
+              ) : (
+                <TreeNode
+                  key={p}
+                  path={p}
+                  label={item?.name ?? basename(p)}
+                  depth={0}
+                  icon={<FileGlyph kind="folder" size={16} />}
+                  onUnpin={() => removeFromCategory(category.id, p)}
+                />
+              )
+            })
           )}
         </div>
       ) : null}
@@ -333,10 +402,16 @@ const NavigationPane: React.FC = () => {
           />
         ))}
 
-        <button type="button" className={styles.newCategory} onClick={() => addCategory()}>
-          <Icon name="add" size={14} />
-          <span>New category</span>
-        </button>
+        {/*
+          With no categories yet the row sits in place and explains itself; once
+          there is one it demotes to a quiet ＋ in the pane's bottom corner.
+        */}
+        {categories.length === 0 ? (
+          <button type="button" className={styles.newCategory} onClick={() => addCategory()}>
+            <Icon name="add" size={14} />
+            <span>New category</span>
+          </button>
+        ) : null}
 
         <div className={styles.section}>
           <button
@@ -375,6 +450,20 @@ const NavigationPane: React.FC = () => {
             </div>
           ) : null}
         </div>
+
+        {categories.length > 0 ? (
+          <div className={styles.paneFooter}>
+            <button
+              type="button"
+              className={styles.newCategoryMini}
+              onClick={() => addCategory()}
+              title="New category"
+              aria-label="New category"
+            >
+              <Icon name="add" size={14} />
+            </button>
+          </div>
+        ) : null}
       </div>
       {headerMenu ? (
         <Menu

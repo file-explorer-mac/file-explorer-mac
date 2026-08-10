@@ -76,9 +76,6 @@ const ContextMenu: React.FC = () => {
   const pinToQuickAccess = useExplorerStore((s) => s.pinToQuickAccess)
   const unpinFromQuickAccess = useExplorerStore((s) => s.unpinFromQuickAccess)
   const isPinned = useExplorerStore((s) => s.isPinned)
-  const favorites = useExplorerStore((s) => s.favorites)
-  const addFavorite = useExplorerStore((s) => s.addFavorite)
-  const removeFavorite = useExplorerStore((s) => s.removeFavorite)
   const undo = useExplorerStore((s) => s.undo)
   const groupBy = useExplorerStore((s) => s.groupBy)
   const setGroupBy = useExplorerStore((s) => s.setGroupBy)
@@ -179,35 +176,30 @@ const ContextMenu: React.FC = () => {
                 isPinned(target)
                   ? unpinFromQuickAccess(target)
                   : pinToQuickAccess(target, targetItem!.name)
-            } as MenuItem,
-            // Sits with Quick access: both are "put this folder in the sidebar".
-            {
-              label: 'Pin to Category',
-              icon: 'group',
-              submenu: [
-                ...categories.map((c) => ({
-                  label: c.name,
-                  // Already there → nothing to do, so show it as done and inert.
-                  checked: c.paths.includes(target),
-                  disabled: c.paths.includes(target),
-                  onClick: () => addToCategory(c.id, [target])
-                })),
-                ...(categories.length ? [{ type: 'separator' as const }] : []),
-                {
-                  label: 'New category…',
-                  icon: 'add',
-                  // Seeded with this folder, then its title opens for renaming.
-                  onClick: () => addCategory(targetItem?.name, [target])
-                }
-              ]
             } as MenuItem
           ]
         : []),
+      // Sits with Quick access: both are "put this in the sidebar". Unlike Quick
+      // access, categories take files too — a spec next to its project folder.
       {
-        label: favorites.includes(target) ? 'Remove from Favorites' : 'Add to Favorites',
-        icon: 'star',
-        onClick: () =>
-          favorites.includes(target) ? removeFavorite(target) : addFavorite(target)
+        label: 'Pin to Category',
+        icon: 'group',
+        submenu: [
+          ...categories.map((c) => ({
+            label: c.name,
+            // Already there → nothing to do, so show it as done and inert.
+            checked: c.paths.includes(target),
+            disabled: c.paths.includes(target),
+            onClick: () => addToCategory(c.id, [target])
+          })),
+          ...(categories.length ? [{ type: 'separator' as const }] : []),
+          {
+            label: 'New category…',
+            icon: 'add',
+            // Seeded with this item, then its title opens for renaming.
+            onClick: () => addCategory(targetItem?.name, [target])
+          }
+        ]
       },
       { type: 'separator' },
       { label: 'Copy as path', onClick: copyPathSelection },

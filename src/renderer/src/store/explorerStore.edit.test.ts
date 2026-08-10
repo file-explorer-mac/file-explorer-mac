@@ -553,23 +553,4 @@ describe('recents and favorites', () => {
     expect(store().recents).toEqual([])
   })
 
-  it('addFavorite skips HOME_PATH', () => {
-    store().addFavorite(HOME_PATH)
-    expect(store().favorites).toEqual([])
-  })
-
-  it('addFavorite prepends and dedupes', () => {
-    store().addFavorite('/a')
-    store().addFavorite('/a')
-    store().addFavorite('/b')
-    expect(store().favorites).toEqual(['/b', '/a'])
-    expect(store().isFavorite('/a')).toBe(true)
-  })
-
-  it('removeFavorite removes a path', () => {
-    useExplorerStore.setState({ favorites: ['/a', '/b'] })
-    store().removeFavorite('/a')
-    expect(store().favorites).toEqual(['/b'])
-    expect(store().isFavorite('/a')).toBe(false)
-  })
 })

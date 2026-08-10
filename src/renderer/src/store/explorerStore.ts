@@ -64,8 +64,6 @@ interface Prefs {
   showHidden: boolean
   /** Absolute paths of recently opened files/folders, most-recent first. */
   recents: string[]
-  /** Absolute paths the user pinned to the Home "Favorites" tab. */
-  favorites: string[]
 }
 
 /** How many recently opened items to remember on the Home page. */
@@ -149,9 +147,8 @@ interface ExplorerState {
   /** Cloud details for the current context-menu target; null when not synced. */
   contextCloud: CloudInfo | null
 
-  // Home page ("Home" with Recent + Favorites tabs)
+  // Home page ("Home" with the Recent list)
   recents: string[]
-  favorites: string[]
 
   // File-operation infrastructure
   undoStack: UndoEntry[]
@@ -271,13 +268,10 @@ interface ExplorerState {
   unpinFromQuickAccess: (path: string) => void
   isPinned: (path: string) => boolean
 
-  // Home page: recently opened items + favorites
+  // Home page: recently opened items
   recordRecent: (path: string) => void
   removeRecent: (path: string) => void
   clearRecents: () => void
-  addFavorite: (path: string) => void
-  removeFavorite: (path: string) => void
-  isFavorite: (path: string) => boolean
 
   // Conflict-aware transfers + undo
   performTransfer: (
@@ -341,8 +335,7 @@ function persist(s: ExplorerState): void {
     sortKey: s.sortKey,
     sortDir: s.sortDir,
     showHidden: s.showHidden,
-    recents: s.recents,
-    favorites: s.favorites
+    recents: s.recents
   })
 }
 
@@ -379,7 +372,6 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   contextCloud: null,
 
   recents: initialPrefs.recents ?? [],
-  favorites: initialPrefs.favorites ?? [],
 
   undoStack: [],
   pendingTransfer: null,
@@ -964,19 +956,6 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set({ recents: [] })
     persist(get())
   },
-
-  addFavorite: (path) => {
-    if (path === HOME_PATH) return
-    set((s) => (s.favorites.includes(path) ? {} : { favorites: [path, ...s.favorites] }))
-    persist(get())
-  },
-
-  removeFavorite: (path) => {
-    set((s) => ({ favorites: s.favorites.filter((p) => p !== path) }))
-    persist(get())
-  },
-
-  isFavorite: (path) => get().favorites.includes(path),
 
   performTransfer: async (srcPaths, destDir, op, clearCut = false) => {
     if (!srcPaths.length) return
