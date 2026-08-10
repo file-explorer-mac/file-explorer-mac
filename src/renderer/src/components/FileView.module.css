@@ -135,7 +135,9 @@
 
 .headerRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px 150px 100px;
+  grid-template-columns:
+    minmax(0, 320px) minmax(0, 180px) minmax(0, 150px)
+    minmax(80px, 1fr);
   position: sticky;
   top: 0;
   z-index: 2;
@@ -221,7 +223,9 @@
 
 .detailRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px 150px 100px;
+  grid-template-columns:
+    minmax(0, 320px) minmax(0, 180px) minmax(0, 150px)
+    minmax(80px, 1fr);
   align-items: center;
   height: 28px;
   border-radius: var(--radius-sm);

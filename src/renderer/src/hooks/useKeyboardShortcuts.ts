@@ -247,7 +247,30 @@ export function useKeyboardShortcuts(): void {
       }
     }
 
+    // Mouse thumb buttons: 3 = back, 4 = forward, matching every browser.
+    // Bound on mousedown because Chromium would otherwise treat them as history
+    // navigation for the renderer document itself.
+    const onMouseNav = (e: MouseEvent): void => {
+      if (e.button !== 3 && e.button !== 4) return
+      e.preventDefault()
+      const s = useExplorerStore.getState()
+      if (e.button === 3 && s.canGoBack()) s.goBack()
+      if (e.button === 4 && s.canGoForward()) s.goForward()
+    }
+    // auxclick fires for the same press that mousedown already handled, so it
+    // only suppresses the default here — navigating again would move two
+    // history entries per click.
+    const onMouseNavAux = (e: MouseEvent): void => {
+      if (e.button === 3 || e.button === 4) e.preventDefault()
+    }
+
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('mousedown', onMouseNav)
+    window.addEventListener('auxclick', onMouseNavAux)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mousedown', onMouseNav)
+      window.removeEventListener('auxclick', onMouseNavAux)
+    }
   }, [])
 }

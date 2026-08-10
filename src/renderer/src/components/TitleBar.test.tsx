@@ -26,60 +26,44 @@ function seedTabs(): void {
   })
 }
 
-describe('TitleBar — window controls', () => {
-  it('minimizes the window', async () => {
-    const user = userEvent.setup()
+describe('TitleBar — macOS window chrome', () => {
+  it('draws no window buttons of its own; macOS owns the traffic lights', () => {
     render(<TitleBar />)
-    await user.click(screen.getByRole('button', { name: 'Minimize' }))
-    expect(api.windowMinimize).toHaveBeenCalledTimes(1)
+    for (const name of ['Minimize', 'Maximize', 'Restore', 'Close']) {
+      expect(screen.queryByRole('button', { name })).toBeNull()
+    }
   })
 
-  it('toggles maximize from the maximize button', async () => {
-    const user = userEvent.setup()
-    render(<TitleBar />)
-    await user.click(screen.getByRole('button', { name: 'Maximize' }))
-    expect(api.windowToggleMaximize).toHaveBeenCalledTimes(1)
-  })
-
-  it('closes the window', async () => {
-    const user = userEvent.setup()
-    render(<TitleBar />)
-    await user.click(screen.getByRole('button', { name: 'Close' }))
-    expect(api.windowClose).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('TitleBar — maximize state subscription', () => {
-  it('subscribes on mount and unsubscribes on unmount', () => {
-    const off = vi.fn()
-    api.onMaximizeChange.mockReturnValue(off)
-    const { unmount } = render(<TitleBar />)
-    expect(api.onMaximizeChange).toHaveBeenCalledTimes(1)
-    expect(off).not.toHaveBeenCalled()
-    unmount()
-    expect(off).toHaveBeenCalledTimes(1)
-  })
-
-  it('reflects the maximized state by swapping the button to Restore and back', () => {
-    let cb: (m: boolean) => void = () => {}
-    api.onMaximizeChange.mockImplementation((fn) => {
+  it('insets the bar for the traffic lights and reclaims that space in full screen', () => {
+    let cb: (f: boolean) => void = () => {}
+    api.onFullScreenChange.mockImplementation((fn) => {
       cb = fn
       return () => {}
     })
-    render(<TitleBar />)
+    const { container } = render(<TitleBar />)
+    const bar = container.firstElementChild!
 
-    // Initial state: not maximized → "Maximize".
-    expect(screen.getByRole('button', { name: 'Maximize' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull()
+    // Windowed: macOS overlays the lights on the left of our bar.
+    expect(bar).toHaveClass('barInset')
 
-    // Window becomes maximized → button now offers "Restore".
+    // Full screen: macOS hides them, so the reserved space goes away.
     act(() => cb(true))
-    expect(screen.getByRole('button', { name: 'Restore' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Maximize' })).toBeNull()
+    expect(bar).not.toHaveClass('barInset')
 
-    // Back to normal → "Maximize" again.
     act(() => cb(false))
-    expect(screen.getByRole('button', { name: 'Maximize' })).toBeInTheDocument()
+    expect(bar).toHaveClass('barInset')
+  })
+})
+
+describe('TitleBar — full-screen subscription', () => {
+  it('subscribes on mount and unsubscribes on unmount', () => {
+    const off = vi.fn()
+    api.onFullScreenChange.mockReturnValue(off)
+    const { unmount } = render(<TitleBar />)
+    expect(api.onFullScreenChange).toHaveBeenCalledTimes(1)
+    expect(off).not.toHaveBeenCalled()
+    unmount()
+    expect(off).toHaveBeenCalledTimes(1)
   })
 })
 

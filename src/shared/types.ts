@@ -113,10 +113,47 @@ export type ConflictPolicy = 'replace' | 'skip' | 'keep-both'
 
 /** Progress update emitted during a copy/move operation. */
 export interface OpProgress {
-  op: 'copy' | 'move'
+  op: 'copy' | 'move' | 'download'
   done: number
   total: number
   name: string
+}
+
+/**
+ * Cloud sync services we recognise by folder location. Only dropbox and
+ * onedrive support "open on the web"; the rest are recognised so they can be
+ * listed in the sidebar and badged.
+ */
+export type CloudProvider =
+  | 'dropbox'
+  | 'onedrive'
+  | 'googledrive'
+  | 'icloud'
+  | 'box'
+  | 'other'
+
+/** The providers whose web URLs can be derived from a local path. */
+export const supportsWebLink = (provider: CloudProvider): boolean =>
+  provider === 'dropbox' || provider === 'onedrive'
+
+/** A synced root folder on this machine. */
+export interface CloudRoot {
+  provider: CloudProvider
+  /** Absolute path of the synced root. */
+  root: string
+  /** Display name including the account, e.g. "Dropbox (NPOSystems)". */
+  label: string
+}
+
+/** What we know about an item inside a synced folder. */
+export interface CloudInfo {
+  provider: CloudProvider
+  label: string
+  root: string
+  /** POSIX-style path within the root; '' for the root itself. */
+  relativePath: string
+  /** True when the contents are a placeholder that has not been downloaded. */
+  dataless: boolean
 }
 
 /** Source→destination mapping returned by copy/move (used for Undo). */
@@ -195,13 +232,23 @@ export interface FileExplorerApi {
   /** Resolve the absolute path of a File from a drop/transfer (Electron webUtils). */
   getPathForFile(file: File): string
 
-  // Frameless window controls (custom title-bar chrome).
-  windowMinimize(): void
-  windowToggleMaximize(): void
+  /** Every cloud sync folder on this machine, for the sidebar. */
+  getCloudRoots(): Promise<Result<CloudRoot[]>>
+  /** Dropbox/OneDrive details for a path, or null data when it isn't synced. */
+  getCloudInfo(path: string): Promise<Result<CloudInfo | null>>
+  /** Opens the item on the provider's website; resolves with the URL used. */
+  openCloudOnWeb(path: string): Promise<Result<string>>
+  /** Download placeholder contents so the items work offline. */
+  makeAvailableOffline(paths: string[]): Promise<Result<{ files: number }>>
+
+  // Window controls. Minimise/zoom are the native traffic lights' job; this is
+  // only what the app itself drives.
+  /** Closes the window — used when the last tab is closed. */
   windowClose(): void
   /** Opens a new, independent File Explorer window. */
   windowNew(): void
-  onMaximizeChange(cb: (isMaximized: boolean) => void): () => void
+  /** Fired on entering/leaving full screen, where macOS hides the traffic lights. */
+  onFullScreenChange(cb: (isFullScreen: boolean) => void): () => void
   /** Subscribe to copy/move progress; returns an unsubscribe function. */
   onOpProgress(cb: (p: OpProgress) => void): () => void
   /** Fired when the OS asks this app to open a folder (default-handler / "Open With"). */
@@ -249,11 +296,13 @@ export const IPC = {
   openWith: 'fs:openWith',
   openInTerminal: 'fs:openInTerminal',
   opProgress: 'fs:opProgress',
-  windowMinimize: 'win:minimize',
-  windowToggleMaximize: 'win:toggleMaximize',
+  cloudRoots: 'cloud:roots',
+  cloudInfo: 'cloud:info',
+  cloudOpenWeb: 'cloud:openWeb',
+  cloudMakeOffline: 'cloud:makeOffline',
   windowClose: 'win:close',
   windowNew: 'win:new',
-  windowMaximizeChanged: 'win:maximizeChanged',
+  windowFullScreenChanged: 'win:fullScreenChanged',
   navigateToPath: 'app:navigateToPath',
   updateCheck: 'update:check',
   updateInstall: 'update:install',

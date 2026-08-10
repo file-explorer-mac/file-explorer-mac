@@ -452,6 +452,106 @@ describe('ContextMenu', () => {
     })
   })
 
+  describe('cloud entries', () => {
+    const cloud = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+      contextCloud: {
+        provider: 'dropbox',
+        label: 'Dropbox (NPOSystems)',
+        root: '/p',
+        relativePath: 'a.txt',
+        dataless: true,
+        ...over
+      }
+    })
+
+    it('shows nothing extra until the cloud lookup resolves', () => {
+      openItemMenu()
+      render(<ContextMenu />)
+      expect(screen.queryByText(/^Open on /)).toBeNull()
+      expect(screen.queryByText('Make available offline')).toBeNull()
+    })
+
+    it('offers the provider web link and the offline download for a Dropbox file', async () => {
+      const openCloudOnWeb = spyAction('openCloudOnWeb')
+      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), cloud())
+      render(<ContextMenu />)
+      expect(screen.getByText('Make available offline')).toBeInTheDocument()
+      // Clicking runs the action and dismisses the menu, so assert presence first.
+      await userEvent.setup().click(screen.getByText('Open on Dropbox'))
+      expect(openCloudOnWeb).toHaveBeenCalled()
+    })
+
+    it('names OneDrive correctly', () => {
+      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), cloud({ provider: 'onedrive' }))
+      render(<ContextMenu />)
+      expect(screen.getByText('Open on OneDrive')).toBeInTheDocument()
+    })
+
+    it('omits the web link for providers whose URL cannot be derived', () => {
+      openItemMenu(
+        makeFileItem({ name: 'a.txt', path: '/p/a.txt' }),
+        cloud({ provider: 'googledrive' })
+      )
+      render(<ContextMenu />)
+      expect(screen.queryByText(/^Open on /)).toBeNull()
+      // Downloading still applies — it is a File Provider placeholder either way.
+      expect(screen.getByText('Make available offline')).toBeInTheDocument()
+    })
+
+    it('hides the download for a file that is already on disk', () => {
+      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), cloud({ dataless: false }))
+      render(<ContextMenu />)
+      expect(screen.queryByText('Make available offline')).toBeNull()
+    })
+
+    it('always offers the download for a folder, which may hide placeholders', async () => {
+      const makeAvailableOffline = spyAction('makeAvailableOffline')
+      openItemMenu(makeFolder({ name: 'docs', path: '/p/docs' }), cloud({ dataless: false }))
+      render(<ContextMenu />)
+      await userEvent.setup().click(screen.getByText('Make available offline'))
+      expect(makeAvailableOffline).toHaveBeenCalled()
+    })
+
+    it('offers the download on the background menu even when the folder is local', () => {
+      // No right-clicked item at all, so "is this a placeholder?" cannot apply.
+      useExplorerStore.setState({
+        currentPath: '/p',
+        items: [],
+        contextMenu: { x: 1, y: 2, targetPath: null },
+        ...cloud({ dataless: false })
+      })
+      render(<ContextMenu />)
+      expect(screen.getByText('Make available offline')).toBeInTheDocument()
+    })
+
+    it('offers the entries on the folder-background menu too', () => {
+      useExplorerStore.setState({
+        currentPath: '/p',
+        items: [],
+        contextMenu: { x: 1, y: 2, targetPath: null },
+        ...cloud()
+      })
+      render(<ContextMenu />)
+      expect(screen.getByText('Open on Dropbox')).toBeInTheDocument()
+    })
+  })
+
+  describe('open in new tab', () => {
+    it('opens a folder in a background tab', async () => {
+      const openInNewTab = spyAction('openInNewTab')
+      openItemMenu(makeFolder({ name: 'docs', path: '/p/docs' }))
+      render(<ContextMenu />)
+      await userEvent.setup().click(screen.getByText('Open in new tab'))
+      expect(openInNewTab).toHaveBeenCalledWith('/p/docs')
+    })
+
+    it('is not offered for a file', () => {
+      openItemMenu()
+      render(<ContextMenu />)
+      expect(screen.queryByText('Open in new tab')).toBeNull()
+    })
+  })
+
   describe('closing behavior', () => {
     it('closes on Escape', async () => {
       const closeContextMenu = spyAction('closeContextMenu')

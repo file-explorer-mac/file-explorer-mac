@@ -43,6 +43,7 @@ const ALL_NAMES: IconName[] = [
   'applications',
   'drive',
   'thisPC',
+  'cloud',
   'star',
   'clock',
   'eye',

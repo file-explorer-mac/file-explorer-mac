@@ -13,7 +13,11 @@ import {
   itemBox,
   visibleRange,
   revealOffset,
-  itemsInRect
+  itemsInRect,
+  detailsGridTemplate,
+  DETAILS_COLUMN_DEFAULTS,
+  DETAILS_MIN_FILL,
+  DETAILS_PAD_X
 } from './fileViewLayout'
 import styles from './FileView.module.css'
 
@@ -86,6 +90,7 @@ const FileView: React.FC = () => {
   const columnWidths = useExplorerStore((s) => s.columnWidths)
 
   const setSort = useExplorerStore((s) => s.setSort)
+  const openInNewTab = useExplorerStore((s) => s.openInNewTab)
   const setColumnWidth = useExplorerStore((s) => s.setColumnWidth)
   const clearSelection = useExplorerStore((s) => s.clearSelection)
   const openContextMenu = useExplorerStore((s) => s.openContextMenu)
@@ -386,6 +391,15 @@ const FileView: React.FC = () => {
       onClick: (e) => handleItemClick(item, e),
       onDoubleClick: () => handleItemDoubleClick(item),
       onContextMenu: (e) => handleItemContextMenu(item, e),
+      // Middle-click opens a folder in a background tab, like a browser link.
+      onMouseDown: (e) => {
+        if (e.button === 1 && item.isDirectory) {
+          e.preventDefault()
+          e.stopPropagation()
+          openInNewTab(item.path)
+        }
+      },
+      onAuxClick: (e) => e.button === 1 && e.preventDefault(),
       draggable: renamingPath !== item.path,
       onDragStart: (e) => onItemDragStart(item, e)
     }
@@ -415,19 +429,30 @@ const FileView: React.FC = () => {
       .filter(Boolean)
       .join(' ')
 
-  // Resizable Details columns (persisted via the store).
-  const colDate = columnWidths.date ?? 180
-  const colType = columnWidths.type ?? 150
-  const colSize = columnWidths.size ?? 100
-  const detailGrid: React.CSSProperties = {
-    gridTemplateColumns: `minmax(120px, 1fr) ${colDate}px ${colType}px ${colSize}px`
+  // Resizable Details columns (persisted via the store). Size is the filler, so
+  // it has no grip — every other grip drags the boundary it sits on.
+  const fixedCols = {
+    name: columnWidths.name ?? DETAILS_COLUMN_DEFAULTS.name,
+    date: columnWidths.date ?? DETAILS_COLUMN_DEFAULTS.date,
+    type: columnWidths.type ?? DETAILS_COLUMN_DEFAULTS.type
   }
-  const startResize = (col: 'date' | 'type' | 'size', e: React.MouseEvent): void => {
+  const detailGrid: React.CSSProperties = {
+    gridTemplateColumns: detailsGridTemplate(columnWidths)
+  }
+  const startResize = (col: keyof typeof fixedCols, e: React.MouseEvent): void => {
     e.preventDefault()
     e.stopPropagation()
     const startX = e.clientX
-    const startW = col === 'date' ? colDate : col === 'type' ? colType : colSize
-    const onMove = (ev: MouseEvent): void => setColumnWidth(col, startW + (ev.clientX - startX))
+    const startW = fixedCols[col]
+    // Once the viewport has been measured, stop the fixed columns from growing
+    // far enough to squeeze Size below its floor.
+    const others = (Object.keys(fixedCols) as (keyof typeof fixedCols)[])
+      .filter((c) => c !== col)
+      .reduce((sum, c) => sum + fixedCols[c], 0)
+    const content = vp.width - 2 * DETAILS_PAD_X
+    const cap = content > 0 ? content - others - DETAILS_MIN_FILL : Infinity
+    const onMove = (ev: MouseEvent): void =>
+      setColumnWidth(col, Math.min(startW + (ev.clientX - startX), cap))
     const onUp = (): void => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
@@ -449,6 +474,11 @@ const FileView: React.FC = () => {
       <button type="button" className={styles.headerCell} onClick={() => setSort('name')}>
         <span>Name</span>
         {sortCaret('name')}
+        <span
+          className={styles.resizer}
+          onMouseDown={(e) => startResize('name', e)}
+          onClick={(e) => e.stopPropagation()}
+        />
       </button>
       <button type="button" className={styles.headerCellDate} onClick={() => setSort('modified')}>
         <span>Date modified</span>
@@ -471,11 +501,6 @@ const FileView: React.FC = () => {
       <button type="button" className={styles.headerCellSize} onClick={() => setSort('size')}>
         <span>Size</span>
         {sortCaret('size')}
-        <span
-          className={styles.resizer}
-          onMouseDown={(e) => startResize('size', e)}
-          onClick={(e) => e.stopPropagation()}
-        />
       </button>
     </div>
   )

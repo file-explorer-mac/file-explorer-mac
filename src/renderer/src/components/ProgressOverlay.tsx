@@ -21,7 +21,9 @@ export default function ProgressOverlay(): JSX.Element | null {
     ? operation.name
     : operation.op === 'move'
       ? 'Moving items'
-      : 'Copying items'
+      : operation.op === 'download'
+        ? 'Making available offline'
+        : 'Copying items'
   const currentName = !isPhrase && operation.name ? operation.name : null
 
   return (

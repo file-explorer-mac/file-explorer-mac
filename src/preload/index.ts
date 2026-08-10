@@ -42,14 +42,17 @@ const api: FileExplorerApi = {
 
   getPathForFile: (file) => webUtils.getPathForFile(file),
 
-  windowMinimize: () => ipcRenderer.send(IPC.windowMinimize),
-  windowToggleMaximize: () => ipcRenderer.send(IPC.windowToggleMaximize),
+  getCloudRoots: () => ipcRenderer.invoke(IPC.cloudRoots),
+  getCloudInfo: (p) => ipcRenderer.invoke(IPC.cloudInfo, p),
+  openCloudOnWeb: (p) => ipcRenderer.invoke(IPC.cloudOpenWeb, p),
+  makeAvailableOffline: (paths) => ipcRenderer.invoke(IPC.cloudMakeOffline, paths),
+
   windowClose: () => ipcRenderer.send(IPC.windowClose),
   windowNew: () => ipcRenderer.send(IPC.windowNew),
-  onMaximizeChange: (cb) => {
-    const listener = (_e: unknown, isMax: boolean): void => cb(isMax)
-    ipcRenderer.on(IPC.windowMaximizeChanged, listener)
-    return () => ipcRenderer.removeListener(IPC.windowMaximizeChanged, listener)
+  onFullScreenChange: (cb) => {
+    const listener = (_e: unknown, isFull: boolean): void => cb(isFull)
+    ipcRenderer.on(IPC.windowFullScreenChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.windowFullScreenChanged, listener)
   },
   onOpProgress: (cb) => {
     const listener = (_e: unknown, p: OpProgress): void => cb(p)

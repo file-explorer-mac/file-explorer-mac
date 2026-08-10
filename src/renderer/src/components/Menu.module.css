@@ -35,7 +35,8 @@
   cursor: default;
 }
 
-.item:hover:not(.disabled) {
+.item:hover:not(.disabled),
+.itemOpen:not(.disabled) {
   background: var(--control-hover);
 }
 

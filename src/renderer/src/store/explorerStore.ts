@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { ConflictPolicy, DriveItem, FileItem, OpProgress, QuickLink } from '@shared/types'
+import type {
+  CloudInfo,
+  CloudRoot,
+  ConflictPolicy,
+  DriveItem,
+  FileItem,
+  OpProgress,
+  QuickLink
+} from '@shared/types'
 import { kindLabel } from '@shared/fileKinds'
 import { basename, parentPath, HOME_PATH } from '@/utils/pathUtils'
 
@@ -30,10 +38,22 @@ export interface PendingTransfer {
   clearCut: boolean
 }
 
+/** Preview pane sizing, shared by the store's clamp and the pane's drag handle. */
+export const PREVIEW_DEFAULT_WIDTH = 300
+export const PREVIEW_MIN_WIDTH = 220
+export const PREVIEW_MAX_WIDTH = 720
+
+/** Sidebar sizing. Default matches --sidebar-w in tokens.css. */
+export const SIDEBAR_DEFAULT_WIDTH = 240
+export const SIDEBAR_MIN_WIDTH = 160
+export const SIDEBAR_MAX_WIDTH = 520
+
 /** Persisted user preferences (localStorage). */
 interface Prefs {
   pinnedLinks: QuickLink[]
   previewOpen: boolean
+  previewWidth: number
+  sidebarWidth: number
   groupBy: GroupKey
   columnWidths: Record<string, number>
   viewMode: ViewMode
@@ -113,7 +133,14 @@ interface ExplorerState {
 
   // Panels & pins
   previewOpen: boolean
+  previewWidth: number
+  sidebarWidth: number
   pinnedLinks: QuickLink[]
+
+  /** Cloud sync folders on this machine, listed under "This PC". */
+  cloudRoots: CloudRoot[]
+  /** Cloud details for the current context-menu target; null when not synced. */
+  contextCloud: CloudInfo | null
 
   // Home page ("Home" with Recent + Favorites tabs)
   recents: string[]
@@ -208,6 +235,18 @@ interface ExplorerState {
   setGroupBy: (key: GroupKey) => void
   setColumnWidth: (col: string, width: number) => void
   togglePreview: () => void
+  setPreviewWidth: (width: number) => void
+  setSidebarWidth: (width: number) => void
+
+  // Cloud (Dropbox / OneDrive / …)
+  loadCloudRoots: () => Promise<void>
+  /** Opens the context target on its provider's website. */
+  openCloudOnWeb: () => Promise<void>
+  /** Downloads placeholder contents for the selection so they work offline. */
+  makeAvailableOffline: () => Promise<void>
+
+  /** Opens a folder in a background-created tab (middle-click / context menu). */
+  openInNewTab: (path: string) => void
 
   // Quick access pins
   pinToQuickAccess: (path: string, name: string) => void
@@ -271,6 +310,8 @@ function persist(s: ExplorerState): void {
   savePrefs({
     pinnedLinks: s.pinnedLinks,
     previewOpen: s.previewOpen,
+    previewWidth: s.previewWidth,
+    sidebarWidth: s.sidebarWidth,
     groupBy: s.groupBy,
     columnWidths: s.columnWidths,
     viewMode: s.viewMode,
@@ -304,7 +345,12 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   columnWidths: initialPrefs.columnWidths ?? {},
 
   previewOpen: initialPrefs.previewOpen ?? false,
+  previewWidth: initialPrefs.previewWidth ?? PREVIEW_DEFAULT_WIDTH,
+  sidebarWidth: initialPrefs.sidebarWidth ?? SIDEBAR_DEFAULT_WIDTH,
   pinnedLinks: initialPrefs.pinnedLinks ?? [],
+
+  cloudRoots: [],
+  contextCloud: null,
 
   recents: initialPrefs.recents ?? [],
   favorites: initialPrefs.favorites ?? [],
@@ -337,6 +383,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
       window.addEventListener('focus', () => void get().refreshClipboardStatus())
     }
     void get().refreshClipboardStatus()
+    void get().loadCloudRoots()
     const [homeDir, rawQuickLinks, drives] = await Promise.all([
       window.api.getHomeDir(),
       window.api.getQuickLinks(),
@@ -717,11 +764,18 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   },
 
   openContextMenu: (x, y, targetPath) => {
-    set({ contextMenu: { x, y, targetPath } })
+    set({ contextMenu: { x, y, targetPath }, contextCloud: null })
     // Keep the Paste entry's enabled state honest about external copies.
     void get().refreshClipboardStatus()
+    // Cheap (one stat against cached roots); the cloud entries appear as soon as
+    // it lands rather than blocking the menu.
+    void window.api.getCloudInfo(targetPath ?? get().currentPath).then((res) => {
+      if (get().contextMenu?.targetPath === targetPath) {
+        set({ contextCloud: res.ok ? (res.data ?? null) : null })
+      }
+    })
   },
-  closeContextMenu: () => set({ contextMenu: null }),
+  closeContextMenu: () => set({ contextMenu: null, contextCloud: null }),
 
   flashStatus: (msg) => {
     set({ statusMessage: msg })
@@ -740,6 +794,54 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   togglePreview: () => {
     set((s) => ({ previewOpen: !s.previewOpen }))
     persist(get())
+  },
+
+  setPreviewWidth: (width) => {
+    set({
+      previewWidth: Math.round(Math.min(PREVIEW_MAX_WIDTH, Math.max(PREVIEW_MIN_WIDTH, width)))
+    })
+    persist(get())
+  },
+
+  setSidebarWidth: (width) => {
+    set({
+      sidebarWidth: Math.round(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width)))
+    })
+    persist(get())
+  },
+
+  loadCloudRoots: async () => {
+    const res = await window.api.getCloudRoots()
+    if (res.ok && res.data) set({ cloudRoots: res.data })
+  },
+
+  openCloudOnWeb: async () => {
+    const target = get().contextMenu?.targetPath ?? get().currentPath
+    const res = await window.api.openCloudOnWeb(target)
+    if (!res.ok) get().flashStatus(res.error ?? 'Could not open on the web')
+  },
+
+  makeAvailableOffline: async () => {
+    const s = get()
+    const target = s.contextMenu?.targetPath
+    // Prefer the whole selection when the right-clicked item is part of it.
+    const paths =
+      target && s.selection.has(target) ? [...s.selection] : target ? [target] : [s.currentPath]
+    const res = await window.api.makeAvailableOffline(paths)
+    set({ operation: null })
+    if (!res.ok) {
+      get().flashStatus(res.error ?? 'Could not download')
+      return
+    }
+    const n = res.data?.files ?? 0
+    get().flashStatus(`${n} file${n === 1 ? '' : 's'} available offline`)
+    void get().refresh()
+  },
+
+  openInNewTab: (path) => {
+    const id = newTabId()
+    // Opens in the background, like a browser's middle-click.
+    set((s) => ({ tabs: [...s.tabs, { id, history: [path], index: 0 }] }))
   },
 
   pinToQuickAccess: (path, name) => {

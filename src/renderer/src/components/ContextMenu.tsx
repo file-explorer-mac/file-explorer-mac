@@ -2,6 +2,7 @@ import React from 'react'
 import { Menu, type MenuItem } from '@/components/Menu'
 import { useExplorerStore } from '@/store/explorerStore'
 import type { GroupKey, SortKey, ViewMode } from '@/store/explorerStore'
+import { supportsWebLink, type CloudProvider } from '@shared/types'
 
 const VIEW_MODES: { mode: ViewMode; label: string }[] = [
   { mode: 'extra-large', label: 'Extra large icons' },
@@ -27,6 +28,15 @@ const GROUP_KEYS: { key: GroupKey; label: string }[] = [
   { key: 'type', label: 'Type' },
   { key: 'size', label: 'Size' }
 ]
+
+const PROVIDER_NAMES: Record<CloudProvider, string> = {
+  dropbox: 'Dropbox',
+  onedrive: 'OneDrive',
+  googledrive: 'Google Drive',
+  icloud: 'iCloud Drive',
+  box: 'Box',
+  other: 'the web'
+}
 
 /** Right-click flyout, driven by store.contextMenu and rendered via the shared Menu primitive. */
 const ContextMenu: React.FC = () => {
@@ -72,6 +82,10 @@ const ContextMenu: React.FC = () => {
   const undo = useExplorerStore((s) => s.undo)
   const groupBy = useExplorerStore((s) => s.groupBy)
   const setGroupBy = useExplorerStore((s) => s.setGroupBy)
+  const contextCloud = useExplorerStore((s) => s.contextCloud)
+  const openCloudOnWeb = useExplorerStore((s) => s.openCloudOnWeb)
+  const makeAvailableOffline = useExplorerStore((s) => s.makeAvailableOffline)
+  const openInNewTab = useExplorerStore((s) => s.openInNewTab)
 
   if (contextMenu === null) return null
 
@@ -80,11 +94,44 @@ const ContextMenu: React.FC = () => {
   const isZip = !!targetItem && targetItem.ext === 'zip'
   const canPin = !!targetItem && targetItem.isDirectory
 
+  /**
+   * Cloud entries for the right-clicked item. Empty until the lookup resolves,
+   * and empty for providers whose web URL we can't derive from a local path.
+   */
+  const cloudItems = (): MenuItem[] => {
+    if (!contextCloud) return []
+    const entries: MenuItem[] = []
+    if (supportsWebLink(contextCloud.provider)) {
+      entries.push({
+        label: `Open on ${PROVIDER_NAMES[contextCloud.provider]}`,
+        icon: 'cloud',
+        onClick: () => void openCloudOnWeb()
+      })
+    }
+    // Folders may hold placeholders even when the folder entry itself doesn't.
+    if (contextCloud.dataless || targetItem?.isDirectory !== false) {
+      entries.push({
+        label: 'Make available offline',
+        icon: 'downloads',
+        onClick: () => void makeAvailableOffline()
+      })
+    }
+    return entries.length ? [{ type: 'separator' } as MenuItem, ...entries] : []
+  }
+
   let menuItems: MenuItem[]
 
   if (target) {
     menuItems = [
       { label: 'Open', onClick: () => targetItem && void openItem(targetItem) },
+      ...(canPin
+        ? [
+            {
+              label: 'Open in new tab',
+              onClick: () => openInNewTab(target)
+            } as MenuItem
+          ]
+        : []),
       {
         label: 'Open with…',
         disabled: !!targetItem && targetItem.isDirectory,
@@ -149,7 +196,8 @@ const ContextMenu: React.FC = () => {
         danger: true,
         onClick: () => void deleteSelection()
       },
-      { label: 'Properties', icon: 'info', shortcut: 'Cmd+I', onClick: () => openProperties(target) }
+      { label: 'Properties', icon: 'info', shortcut: 'Cmd+I', onClick: () => openProperties(target) },
+      ...cloudItems()
     ]
   } else {
     menuItems = [
@@ -227,7 +275,8 @@ const ContextMenu: React.FC = () => {
       { label: 'Reveal in Finder', onClick: () => void window.api.revealInFinder(currentPath) },
       { label: 'Select all', shortcut: 'Ctrl+A', onClick: selectAll },
       { type: 'separator' },
-      { label: 'Properties', icon: 'info', shortcut: 'Cmd+I', onClick: () => openProperties(currentPath) }
+      { label: 'Properties', icon: 'info', shortcut: 'Cmd+I', onClick: () => openProperties(currentPath) },
+      ...cloudItems()
     ]
   }
 

@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PreviewPane from './PreviewPane'
-import { useExplorerStore } from '@/store/explorerStore'
+import {
+  useExplorerStore,
+  PREVIEW_MIN_WIDTH,
+  PREVIEW_MAX_WIDTH
+} from '@/store/explorerStore'
 import { resetExplorerStore } from '@test/storeHelpers'
 import { installApiMock, type ApiMock } from '@test/apiMock'
 import { makeFileItem, makeFolder } from '@test/factories'
@@ -173,5 +177,49 @@ describe('PreviewPane', () => {
 
     expect(await screen.findByText('second content')).toBeInTheDocument()
     expect(screen.queryByText('first content')).not.toBeInTheDocument()
+  })
+})
+
+describe('PreviewPane — resizing', () => {
+  beforeEach(() => {
+    useExplorerStore.setState({ previewOpen: true, previewWidth: 300 })
+  })
+
+  it('renders at the stored width', () => {
+    const { container } = render(<PreviewPane />)
+    expect((container.querySelector('aside') as HTMLElement).style.width).toBe('300px')
+  })
+
+  it('widens as the grip is dragged left, since the pane hugs the right edge', () => {
+    const { container } = render(<PreviewPane />)
+    const grip = container.querySelector('[role="separator"]') as HTMLElement
+    fireEvent.mouseDown(grip, { clientX: 500 })
+    fireEvent.mouseMove(window, { clientX: 420 })
+    fireEvent.mouseUp(window)
+    expect(useExplorerStore.getState().previewWidth).toBe(380)
+  })
+
+  it('clamps to the min and max widths', () => {
+    const { container } = render(<PreviewPane />)
+    const grip = container.querySelector('[role="separator"]') as HTMLElement
+
+    fireEvent.mouseDown(grip, { clientX: 0 })
+    fireEvent.mouseMove(window, { clientX: 5000 })
+    fireEvent.mouseUp(window)
+    expect(useExplorerStore.getState().previewWidth).toBe(PREVIEW_MIN_WIDTH)
+
+    fireEvent.mouseDown(grip, { clientX: 0 })
+    fireEvent.mouseMove(window, { clientX: -5000 })
+    fireEvent.mouseUp(window)
+    expect(useExplorerStore.getState().previewWidth).toBe(PREVIEW_MAX_WIDTH)
+  })
+
+  it('stops tracking the mouse after the drag ends', () => {
+    const { container } = render(<PreviewPane />)
+    const grip = container.querySelector('[role="separator"]') as HTMLElement
+    fireEvent.mouseDown(grip, { clientX: 500 })
+    fireEvent.mouseUp(window)
+    fireEvent.mouseMove(window, { clientX: 100 })
+    expect(useExplorerStore.getState().previewWidth).toBe(300)
   })
 })

@@ -63,19 +63,19 @@ const TitleBar: React.FC = () => {
   const activeTabId = useExplorerStore((s) => s.activeTabId)
   const newTab = useExplorerStore((s) => s.newTab)
 
-  const [maximized, setMaximized] = useState(false)
+  // macOS draws the traffic lights over the left of the bar, except in full
+  // screen where it hides them and that space is ours again.
+  const [fullScreen, setFullScreen] = useState(false)
 
   useEffect(() => {
-    const off = window.api.onMaximizeChange((m) => setMaximized(m))
+    const off = window.api.onFullScreenChange((f) => setFullScreen(f))
     return off
   }, [])
 
   const showClose = tabs.length > 1
 
   return (
-    <div className={`app-drag ${styles.bar}`}>
-      <FileGlyph kind="folder" size={18} className={styles.appIcon} />
-
+    <div className={`app-drag ${styles.bar} ${fullScreen ? '' : styles.barInset}`}>
       <div className={styles.tabStrip}>
         {tabs.map((tab) => (
           <TabButton
@@ -92,33 +92,6 @@ const TitleBar: React.FC = () => {
           aria-label="New tab"
         >
           <Icon name="add" size={16} />
-        </button>
-      </div>
-
-      <div className={styles.winControls}>
-        <button
-          type="button"
-          className={`app-no-drag ${styles.winBtn}`}
-          onClick={() => window.api.windowMinimize()}
-          aria-label="Minimize"
-        >
-          <Icon name="minimize" size={16} />
-        </button>
-        <button
-          type="button"
-          className={`app-no-drag ${styles.winBtn}`}
-          onClick={() => window.api.windowToggleMaximize()}
-          aria-label={maximized ? 'Restore' : 'Maximize'}
-        >
-          <Icon name={maximized ? 'restore' : 'maximize'} size={16} />
-        </button>
-        <button
-          type="button"
-          className={`app-no-drag ${styles.winBtn} ${styles.winBtnClose}`}
-          onClick={() => window.api.windowClose()}
-          aria-label="Close"
-        >
-          <Icon name="close" size={16} />
         </button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 .pane {
-  width: var(--sidebar-w);
+  /* Width comes from the store so the drag grip can persist it. */
   flex-shrink: 0;
   background: var(--sidebar-bg);
   overflow-y: auto;
@@ -7,6 +7,24 @@
   border: 1px solid var(--stroke);
   border-right: none;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+/* Drag grip, a flex column between this pane and the file list. */
+.resizer {
+  position: relative;
+  flex: 0 0 5px;
+  cursor: col-resize;
+  z-index: 3;
+}
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
+  background: var(--accent);
+  opacity: 0;
+}
+.resizer:hover::after {
+  opacity: 1;
 }
 
 .section {

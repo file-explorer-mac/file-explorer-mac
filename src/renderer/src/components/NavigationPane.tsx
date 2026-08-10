@@ -103,74 +103,118 @@ const NavigationPane: React.FC = () => {
   const quickLinks = useExplorerStore((s) => s.quickLinks)
   const pinnedLinks = useExplorerStore((s) => s.pinnedLinks)
   const drives = useExplorerStore((s) => s.drives)
+  const cloudRoots = useExplorerStore((s) => s.cloudRoots)
   const unpinFromQuickAccess = useExplorerStore((s) => s.unpinFromQuickAccess)
+  const sidebarWidth = useExplorerStore((s) => s.sidebarWidth)
+  const setSidebarWidth = useExplorerStore((s) => s.setSidebarWidth)
   const [quickOpen, setQuickOpen] = useState(true)
   const [pcOpen, setPcOpen] = useState(true)
 
-  return (
-    <div className={styles.pane}>
-      <div className={styles.section}>
-        <button
-          type="button"
-          className={styles.sectionHeader}
-          onClick={() => setQuickOpen((v) => !v)}
-        >
-          <Icon
-            name={quickOpen ? 'chevronDown' : 'chevronRight'}
-            size={12}
-            className={styles.sectionChevron}
-          />
-          <span className={styles.sectionLabel}>Quick access</span>
-        </button>
-        {quickOpen ? (
-          <div className={styles.tree}>
-            {quickLinks.map((l) => (
-              <TreeNode
-                key={l.path}
-                path={l.path}
-                label={l.name}
-                depth={0}
-                icon={<Icon name={QUICK_ICON[l.icon]} size={16} className={styles.accentIcon} />}
-              />
-            ))}
-            {pinnedLinks.map((l) => (
-              <TreeNode
-                key={l.path}
-                path={l.path}
-                label={l.name}
-                depth={0}
-                icon={<FileGlyph kind="folder" size={16} />}
-                onUnpin={() => unpinFromQuickAccess(l.path)}
-              />
-            ))}
-          </div>
-        ) : null}
-      </div>
+  // The pane sits at the left edge, so dragging its grip right widens it.
+  const startResize = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = sidebarWidth
+    const onMove = (ev: MouseEvent): void => setSidebarWidth(startW + (ev.clientX - startX))
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
-      <div className={styles.section}>
-        <button type="button" className={styles.sectionHeader} onClick={() => setPcOpen((v) => !v)}>
-          <Icon
-            name={pcOpen ? 'chevronDown' : 'chevronRight'}
-            size={12}
-            className={styles.sectionChevron}
-          />
-          <span className={styles.sectionLabel}>This PC</span>
-        </button>
-        {pcOpen ? (
-          <div className={styles.tree}>
-            {drives.map((d) => (
-              <TreeNode
-                key={d.path}
-                path={d.path}
-                label={d.name}
-                depth={0}
-                icon={<FileGlyph kind="drive" size={18} />}
-              />
-            ))}
-          </div>
-        ) : null}
+  return (
+    <>
+      <div className={styles.pane} style={{ width: sidebarWidth }}>
+        <div className={styles.section}>
+          <button
+            type="button"
+            className={styles.sectionHeader}
+            onClick={() => setQuickOpen((v) => !v)}
+          >
+            <Icon
+              name={quickOpen ? 'chevronDown' : 'chevronRight'}
+              size={12}
+              className={styles.sectionChevron}
+            />
+            <span className={styles.sectionLabel}>Quick access</span>
+          </button>
+          {quickOpen ? (
+            <div className={styles.tree}>
+              {quickLinks.map((l) => (
+                <TreeNode
+                  key={l.path}
+                  path={l.path}
+                  label={l.name}
+                  depth={0}
+                  icon={<Icon name={QUICK_ICON[l.icon]} size={16} className={styles.accentIcon} />}
+                />
+              ))}
+              {pinnedLinks.map((l) => (
+                <TreeNode
+                  key={l.path}
+                  path={l.path}
+                  label={l.name}
+                  depth={0}
+                  icon={<FileGlyph kind="folder" size={16} />}
+                  onUnpin={() => unpinFromQuickAccess(l.path)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className={styles.section}>
+          <button
+            type="button"
+            className={styles.sectionHeader}
+            onClick={() => setPcOpen((v) => !v)}
+          >
+            <Icon
+              name={pcOpen ? 'chevronDown' : 'chevronRight'}
+              size={12}
+              className={styles.sectionChevron}
+            />
+            <span className={styles.sectionLabel}>This PC</span>
+          </button>
+          {pcOpen ? (
+            <div className={styles.tree}>
+              {drives.map((d) => (
+                <TreeNode
+                  key={d.path}
+                  path={d.path}
+                  label={d.name}
+                  depth={0}
+                  icon={<FileGlyph kind="drive" size={18} />}
+                />
+              ))}
+              {/* Dropbox, OneDrive, Google Drive, iCloud… detected at startup. */}
+              {cloudRoots.map((c) => (
+                <TreeNode
+                  key={c.root}
+                  path={c.root}
+                  label={c.label}
+                  depth={0}
+                  icon={<Icon name="cloud" size={18} />}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
-    </div>
+      {/*
+        A flex sibling rather than a child of the pane: the pane scrolls, and an
+        absolutely-positioned grip inside it would scroll away with the tree.
+      */}
+      <div
+        className={styles.resizer}
+        onMouseDown={startResize}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize navigation pane"
+      />
+    </>
   )
 }
 

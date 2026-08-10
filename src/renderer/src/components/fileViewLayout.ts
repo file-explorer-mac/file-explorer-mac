@@ -39,6 +39,35 @@ const METRICS: Record<ViewMode, CellMetrics> = {
   'extra-large': { cellW: 152, cellH: 158, colGap: 4, rowGap: 4, padX: 12, padTop: 12, padBottom: 12, headerHeight: 0, fullWidth: false }
 }
 
+/**
+ * Details view columns. Name, Date and Type carry explicit widths and Size takes
+ * whatever is left over, so a resize grip only ever moves the boundary it sits
+ * on — it tracks the cursor instead of shoving the other columns around.
+ */
+export const DETAILS_COLUMN_DEFAULTS = { name: 320, date: 180, type: 150 }
+
+/** Floor for the filling Size column, so the fixed columns can't crush it. */
+export const DETAILS_MIN_FILL = 80
+
+/** Horizontal padding of the details content box; mirrors METRICS.details.padX. */
+export const DETAILS_PAD_X = 8
+
+/**
+ * `grid-template-columns` for a details header/row at the given widths.
+ *
+ * The fixed tracks are `minmax(0, Npx)`: they take their full width whenever
+ * there is room — which is what keeps a resize grip under the cursor — but
+ * shrink instead of overflowing when the pane is too narrow for them. Letting
+ * them overflow would scroll the rows horizontally out from under the header,
+ * which is a flex child sized to the container rather than to the scroll width.
+ */
+export function detailsGridTemplate(widths: Record<string, number>): string {
+  const name = widths.name ?? DETAILS_COLUMN_DEFAULTS.name
+  const date = widths.date ?? DETAILS_COLUMN_DEFAULTS.date
+  const type = widths.type ?? DETAILS_COLUMN_DEFAULTS.type
+  return `minmax(0, ${name}px) minmax(0, ${date}px) minmax(0, ${type}px) minmax(${DETAILS_MIN_FILL}px, 1fr)`
+}
+
 export interface GridLayout {
   columns: number
   cellW: number

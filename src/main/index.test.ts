@@ -77,10 +77,6 @@ interface FakeWin {
   isMinimized: ReturnType<typeof vi.fn>
   restore: ReturnType<typeof vi.fn>
   focus: ReturnType<typeof vi.fn>
-  isMaximized: ReturnType<typeof vi.fn>
-  maximize: ReturnType<typeof vi.fn>
-  unmaximize: ReturnType<typeof vi.fn>
-  minimize: ReturnType<typeof vi.fn>
   close: ReturnType<typeof vi.fn>
   getBounds: ReturnType<typeof vi.fn>
   show: ReturnType<typeof vi.fn>
@@ -126,10 +122,6 @@ function makeFakeWin(): FakeWin {
     isMinimized: vi.fn().mockReturnValue(false),
     restore: vi.fn(),
     focus: vi.fn(),
-    isMaximized: vi.fn().mockReturnValue(false),
-    maximize: vi.fn(),
-    unmaximize: vi.fn(),
-    minimize: vi.fn(),
     close: vi.fn(),
     getBounds: vi.fn().mockReturnValue({ x: 10, y: 20, width: 800, height: 600 }),
     show: vi.fn()
@@ -416,15 +408,24 @@ describe('createWindow branches', () => {
     expect(createdWindows.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('emits maximize-changed on maximize and unmaximize', async () => {
+  it('emits full-screen-changed on entering and leaving full screen', async () => {
     await loadModule()
     const win = createdWindows[0]
-    win.isMaximized.mockReturnValue(true)
-    win.emit('maximize')
-    expect(win.webContents.send).toHaveBeenCalledWith(IPC.windowMaximizeChanged, true)
-    win.isMaximized.mockReturnValue(false)
-    win.emit('unmaximize')
-    expect(win.webContents.send).toHaveBeenCalledWith(IPC.windowMaximizeChanged, false)
+    win.emit('enter-full-screen')
+    expect(win.webContents.send).toHaveBeenCalledWith(IPC.windowFullScreenChanged, true)
+    win.emit('leave-full-screen')
+    expect(win.webContents.send).toHaveBeenCalledWith(IPC.windowFullScreenChanged, false)
+  })
+
+  it('keeps the native macOS traffic lights instead of drawing window controls', async () => {
+    await loadModule()
+    const cfg = (BrowserWindowMock as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    // `frame: false` would suppress the traffic lights along with the title bar.
+    expect(cfg.frame).toBeUndefined()
+    expect(cfg.titleBarStyle).toBe('hidden')
+    // On-screen and inset, not parked off-canvas as they were previously.
+    expect(cfg.trafficLightPosition.x).toBeGreaterThan(0)
+    expect(cfg.trafficLightPosition.y).toBeGreaterThan(0)
   })
 
   it('window open handler opens http externally and denies; denies other schemes', async () => {
@@ -692,32 +693,16 @@ describe('window control ipc', () => {
     await loadModule()
   })
 
-  it('minimize/toggleMaximize/close use the sender window', async () => {
+  it('close uses the sender window', async () => {
     const win = makeFakeWin()
     BrowserWindowMock.fromWebContents.mockReturnValue(win)
-    const ev = { sender: {} }
-
-    ipcOn[IPC.windowMinimize](ev)
-    expect(win.minimize).toHaveBeenCalled()
-
-    win.isMaximized.mockReturnValue(false)
-    ipcOn[IPC.windowToggleMaximize](ev)
-    expect(win.maximize).toHaveBeenCalled()
-
-    win.isMaximized.mockReturnValue(true)
-    ipcOn[IPC.windowToggleMaximize](ev)
-    expect(win.unmaximize).toHaveBeenCalled()
-
-    ipcOn[IPC.windowClose](ev)
+    ipcOn[IPC.windowClose]({ sender: {} })
     expect(win.close).toHaveBeenCalled()
   })
 
-  it('window controls no-op when no sender window', async () => {
+  it('close no-ops when there is no sender window', async () => {
     BrowserWindowMock.fromWebContents.mockReturnValue(null)
-    const ev = { sender: {} }
-    expect(() => ipcOn[IPC.windowMinimize](ev)).not.toThrow()
-    expect(() => ipcOn[IPC.windowToggleMaximize](ev)).not.toThrow()
-    expect(() => ipcOn[IPC.windowClose](ev)).not.toThrow()
+    expect(() => ipcOn[IPC.windowClose]({ sender: {} })).not.toThrow()
   })
 
   it('windowNew creates a window', async () => {

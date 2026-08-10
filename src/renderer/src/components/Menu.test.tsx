@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Menu, type MenuItem } from './Menu'
 
@@ -223,7 +223,7 @@ describe('Menu', () => {
       expect(screen.getByText('Child')).toBeInTheDocument()
     })
 
-    it('clicking a submenu parent returns early so its own onClick never fires', async () => {
+    it('clicking a submenu parent opens the submenu and leaves the menu open', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
       const onClick = vi.fn()
@@ -232,9 +232,36 @@ describe('Menu', () => {
       ]
       render(<Menu items={items} x={0} y={0} onClose={onClose} />)
       await user.click(screen.getByText('Parent'))
-      // handleItem returns early for items with a submenu — the parent onClick
-      // is never invoked.
+      // A parent row has no action of its own; it just reveals its submenu, and
+      // the click must not be mistaken for one landing outside the menu.
+      expect(screen.getByText('Child')).toBeInTheDocument()
       expect(onClick).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('portals the submenu out of the menu box so position:fixed is viewport-relative', async () => {
+      const user = userEvent.setup()
+      const { container } = render(
+        <Menu items={subItems} x={0} y={0} onClose={vi.fn()} />
+      )
+      await user.hover(screen.getByText('Parent').closest('[role="menuitem"]')!)
+      // .menu sets backdrop-filter, which would make it the containing block for
+      // a nested fixed-position submenu — so the submenu must not live inside it.
+      const root = container.querySelector('[role="menu"]')!
+      expect(root.contains(screen.getByText('Child'))).toBe(false)
+      expect(document.body.contains(screen.getByText('Child'))).toBe(true)
+    })
+
+    it('a mousedown inside the portaled submenu does not dismiss the menu', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      render(<Menu items={subItems} x={0} y={0} onClose={onClose} />)
+      await user.hover(screen.getByText('Parent').closest('[role="menuitem"]')!)
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0)) // let the outside-click watcher attach
+      })
+      fireEvent.mouseDown(screen.getByText('Child'))
+      expect(onClose).not.toHaveBeenCalled()
     })
 
     it('hovering an item without a submenu closes any open submenu', async () => {

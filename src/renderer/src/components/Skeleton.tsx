@@ -1,5 +1,6 @@
 import React from 'react'
 import { useExplorerStore } from '@/store/explorerStore'
+import { detailsGridTemplate } from './fileViewLayout'
 import styles from './Skeleton.module.css'
 
 /** Deterministic pseudo-random widths so name bars look natural without flicker. */
@@ -18,9 +19,7 @@ const Skeleton: React.FC = () => {
 
   if (viewMode === 'details') {
     const grid: React.CSSProperties = {
-      gridTemplateColumns: `minmax(0, 1fr) ${columnWidths.date ?? 180}px ${
-        columnWidths.type ?? 150
-      }px ${columnWidths.size ?? 100}px`
+      gridTemplateColumns: detailsGridTemplate(columnWidths)
     }
     return (
       <div className={styles.details} aria-busy="true">

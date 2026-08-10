@@ -38,6 +38,7 @@ export type IconName =
   | 'applications'
   | 'drive'
   | 'thisPC'
+  | 'cloud'
   | 'star'
   | 'clock'
   | 'eye'
@@ -169,6 +170,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   downloads: <path d="M8 2.5v7.5M5 7l3 3 3-3M3.5 13h9" />,
+  cloud: <path d="M4.6 12.5h6.6a2.9 2.9 0 0 0 .3-5.8 4 4 0 0 0-7.7-.6 2.7 2.7 0 0 0 .8 6.4Z" />,
   pictures: (
     <>
       <rect x="2.2" y="3" width="11.6" height="10" rx="1" />

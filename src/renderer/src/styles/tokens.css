@@ -41,11 +41,6 @@
   --row-selected-hover: #dcebfb;
   --row-selected-stroke: #cfe4f9;
 
-  /* Window controls */
-  --winctl-hover: rgba(0, 0, 0, 0.05);
-  --winctl-close-hover: #c42b1c;
-  --winctl-close-glyph-hover: #ffffff;
-
   /* Geometry */
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -110,10 +105,6 @@
     --row-selected: #2d3f50;
     --row-selected-hover: #355068;
     --row-selected-stroke: #3a536b;
-
-    --winctl-hover: rgba(255, 255, 255, 0.07);
-    --winctl-close-hover: #c42b1c;
-    --winctl-close-glyph-hover: #ffffff;
 
     --flyout-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.6);
     --flyout-bg: #2c2c2c;

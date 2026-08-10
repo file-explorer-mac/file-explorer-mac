@@ -2,14 +2,20 @@
   display: flex;
   align-items: flex-end;
   height: var(--titlebar-h);
+  padding-right: 8px;
   background: var(--tab-bar-bg);
   user-select: none;
   overflow: hidden;
 }
 
-.appIcon {
-  margin: 0 8px 11px 12px;
-  flex-shrink: 0;
+/*
+ * Clears the native macOS traffic lights, which sit at x: 20 (see
+ * trafficLightPosition in src/main/index.ts) and span ~52px, then adds a gap so
+ * the first tab doesn't crowd them. Dropped in full screen, where macOS hides
+ * the lights.
+ */
+.barInset {
+  padding-left: 96px;
 }
 
 .tabStrip {
@@ -110,33 +116,3 @@
   color: var(--text-primary);
 }
 
-.winControls {
-  display: flex;
-  align-items: stretch;
-  margin-left: auto;
-  height: var(--titlebar-h);
-  flex-shrink: 0;
-}
-
-.winBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 100%;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: default;
-}
-
-.winBtn:hover {
-  background: var(--winctl-hover);
-}
-
-.winBtnClose:hover {
-  background: var(--winctl-close-hover);
-  color: var(--winctl-close-glyph-hover);
-}

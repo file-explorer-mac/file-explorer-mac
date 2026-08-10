@@ -1,10 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { useExplorerStore } from './explorerStore'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import {
+  useExplorerStore,
+  PREVIEW_MIN_WIDTH,
+  PREVIEW_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH
+} from './explorerStore'
 import { HOME_PATH } from '@/utils/pathUtils'
 import { resetExplorerStore } from '@test/storeHelpers'
 import { installApiMock, type ApiMock } from '@test/apiMock'
 import { makeFileItem, makeQuickLink, makeDrive } from '@test/factories'
-import type { FileItem, OpProgress, Result } from '@shared/types'
+import type { CloudInfo, FileItem, OpProgress, Result } from '@shared/types'
 
 let api: ApiMock
 beforeEach(() => {
@@ -359,5 +365,170 @@ describe('openItem', () => {
     const file = makeFileItem({ name: 'a.txt', path: '/p/a.txt' })
     await store().openItem(file)
     expect(store().statusMessage).toBe('Could not open file')
+  })
+})
+
+describe('cloud actions', () => {
+  const info = {
+    provider: 'dropbox' as const,
+    label: 'Dropbox (Team)',
+    root: '/cloud',
+    relativePath: 'a.txt',
+    dataless: true
+  }
+
+  it('loadCloudRoots stores the roots for the sidebar', async () => {
+    const roots = [{ provider: 'dropbox' as const, root: '/cloud', label: 'Dropbox' }]
+    api.getCloudRoots.mockResolvedValue({ ok: true, data: roots })
+    await useExplorerStore.getState().loadCloudRoots()
+    expect(useExplorerStore.getState().cloudRoots).toEqual(roots)
+  })
+
+  it('loadCloudRoots leaves the list alone when the lookup fails', async () => {
+    api.getCloudRoots.mockResolvedValue({ ok: false, error: 'nope' })
+    await useExplorerStore.getState().loadCloudRoots()
+    expect(useExplorerStore.getState().cloudRoots).toEqual([])
+  })
+
+  it('opening the context menu fills in cloud details for the target', async () => {
+    api.getCloudInfo.mockResolvedValue({ ok: true, data: info })
+    useExplorerStore.getState().openContextMenu(1, 2, '/cloud/a.txt')
+    await vi.waitFor(() => expect(useExplorerStore.getState().contextCloud).toEqual(info))
+    expect(api.getCloudInfo).toHaveBeenCalledWith('/cloud/a.txt')
+  })
+
+  it('falls back to the current folder when the menu opened on empty space', async () => {
+    useExplorerStore.setState({ currentPath: '/cloud' })
+    api.getCloudInfo.mockResolvedValue({ ok: true, data: info })
+    useExplorerStore.getState().openContextMenu(1, 2, null)
+    await vi.waitFor(() => expect(api.getCloudInfo).toHaveBeenCalledWith('/cloud'))
+  })
+
+  it('discards a lookup that resolves after the menu moved to another item', async () => {
+    let resolveFirst!: (v: Result<CloudInfo | null>) => void
+    api.getCloudInfo
+      .mockReturnValueOnce(new Promise<Result<CloudInfo | null>>((r) => (resolveFirst = r)))
+      .mockResolvedValueOnce({ ok: true, data: null })
+
+    useExplorerStore.getState().openContextMenu(1, 2, '/cloud/a.txt')
+    useExplorerStore.getState().openContextMenu(3, 4, '/cloud/b.txt')
+    // The slow first lookup lands last; it must not overwrite the current target.
+    resolveFirst({ ok: true, data: info })
+    await vi.waitFor(() => expect(api.getCloudInfo).toHaveBeenCalledTimes(2))
+    await Promise.resolve()
+    expect(useExplorerStore.getState().contextCloud).toBeNull()
+  })
+
+  it('records a failed lookup as "not synced" rather than leaving stale data', async () => {
+    api.getCloudInfo.mockResolvedValue({ ok: false, error: 'EACCES' })
+    useExplorerStore.getState().openContextMenu(1, 2, '/x')
+    await vi.waitFor(() => expect(api.getCloudInfo).toHaveBeenCalled())
+    expect(useExplorerStore.getState().contextCloud).toBeNull()
+  })
+
+  it('closing the menu clears the cloud details', () => {
+    useExplorerStore.setState({ contextCloud: info })
+    useExplorerStore.getState().closeContextMenu()
+    expect(useExplorerStore.getState().contextCloud).toBeNull()
+  })
+
+  it('openCloudOnWeb opens the context target', async () => {
+    useExplorerStore.setState({ contextMenu: { x: 0, y: 0, targetPath: '/cloud/a.txt' } })
+    await useExplorerStore.getState().openCloudOnWeb()
+    expect(api.openCloudOnWeb).toHaveBeenCalledWith('/cloud/a.txt')
+  })
+
+  it('openCloudOnWeb reports a failure in the status bar', async () => {
+    api.openCloudOnWeb.mockResolvedValue({ ok: false, error: 'no link' })
+    await useExplorerStore.getState().openCloudOnWeb()
+    expect(useExplorerStore.getState().statusMessage).toBe('no link')
+  })
+
+  it('makeAvailableOffline downloads the whole selection when the target is in it', async () => {
+    useExplorerStore.setState({
+      contextMenu: { x: 0, y: 0, targetPath: '/c/a' },
+      selection: new Set(['/c/a', '/c/b'])
+    })
+    api.makeAvailableOffline.mockResolvedValue({ ok: true, data: { files: 2 } })
+    await useExplorerStore.getState().makeAvailableOffline()
+    expect(api.makeAvailableOffline).toHaveBeenCalledWith(['/c/a', '/c/b'])
+    expect(useExplorerStore.getState().statusMessage).toBe('2 files available offline')
+  })
+
+  it('downloads just the target when it is not part of the selection', async () => {
+    useExplorerStore.setState({
+      contextMenu: { x: 0, y: 0, targetPath: '/c/a' },
+      selection: new Set(['/c/z'])
+    })
+    api.makeAvailableOffline.mockResolvedValue({ ok: true, data: { files: 1 } })
+    await useExplorerStore.getState().makeAvailableOffline()
+    expect(api.makeAvailableOffline).toHaveBeenCalledWith(['/c/a'])
+    expect(useExplorerStore.getState().statusMessage).toBe('1 file available offline')
+  })
+
+  it('downloads the current folder when the menu opened on empty space', async () => {
+    useExplorerStore.setState({
+      currentPath: '/c',
+      contextMenu: { x: 0, y: 0, targetPath: null }
+    })
+    await useExplorerStore.getState().makeAvailableOffline()
+    expect(api.makeAvailableOffline).toHaveBeenCalledWith(['/c'])
+  })
+
+  it('reports a download failure and does not refresh', async () => {
+    api.makeAvailableOffline.mockResolvedValue({ ok: false, error: 'offline' })
+    await useExplorerStore.getState().makeAvailableOffline()
+    expect(useExplorerStore.getState().statusMessage).toBe('offline')
+  })
+
+  it('falls back to generic messages when a failure carries no error text', async () => {
+    api.openCloudOnWeb.mockResolvedValue({ ok: false })
+    await useExplorerStore.getState().openCloudOnWeb()
+    expect(useExplorerStore.getState().statusMessage).toBe('Could not open on the web')
+
+    api.makeAvailableOffline.mockResolvedValue({ ok: false })
+    await useExplorerStore.getState().makeAvailableOffline()
+    expect(useExplorerStore.getState().statusMessage).toBe('Could not download')
+  })
+
+  it('reports zero when a successful download reports no file count', async () => {
+    api.makeAvailableOffline.mockResolvedValue({ ok: true })
+    await useExplorerStore.getState().makeAvailableOffline()
+    expect(useExplorerStore.getState().statusMessage).toBe('0 files available offline')
+  })
+})
+
+describe('openInNewTab', () => {
+  it('adds a background tab without stealing focus from the current one', () => {
+    const before = useExplorerStore.getState().activeTabId
+    useExplorerStore.getState().openInNewTab('/p/docs')
+    const s = useExplorerStore.getState()
+    expect(s.tabs).toHaveLength(2)
+    expect(s.tabs[1].history).toEqual(['/p/docs'])
+    expect(s.activeTabId).toBe(before)
+  })
+})
+
+describe('setPreviewWidth', () => {
+  it('rounds and clamps to the pane limits', () => {
+    const s = () => useExplorerStore.getState()
+    s().setPreviewWidth(400.4)
+    expect(s().previewWidth).toBe(400)
+    s().setPreviewWidth(10_000)
+    expect(s().previewWidth).toBe(PREVIEW_MAX_WIDTH)
+    s().setPreviewWidth(0)
+    expect(s().previewWidth).toBe(PREVIEW_MIN_WIDTH)
+  })
+})
+
+describe('setSidebarWidth', () => {
+  it('rounds and clamps to the sidebar limits', () => {
+    const s = () => useExplorerStore.getState()
+    s().setSidebarWidth(300.6)
+    expect(s().sidebarWidth).toBe(301)
+    s().setSidebarWidth(10_000)
+    expect(s().sidebarWidth).toBe(SIDEBAR_MAX_WIDTH)
+    s().setSidebarWidth(0)
+    expect(s().sidebarWidth).toBe(SIDEBAR_MIN_WIDTH)
   })
 })

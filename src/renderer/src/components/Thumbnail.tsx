@@ -8,6 +8,12 @@ interface ThumbnailProps {
   item: FileItem
   size: number
   className?: string
+  /**
+   * 'cover' crops to a square, which is what the uniform grid/list cells want.
+   * 'contain' keeps the image's own aspect ratio — use it wherever the picture
+   * itself is the point, like the preview pane.
+   */
+  fit?: 'cover' | 'contain'
 }
 
 // Kinds the OS thumbnailer can preview meaningfully.
@@ -19,7 +25,7 @@ const THUMB_KINDS = new Set<FileKind>(['image', 'video', 'pdf'])
  * folder with thousands of files doesn't build thousands of SVGs / fire
  * thousands of thumbnail requests up front.
  */
-const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className }) => {
+const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className, fit = 'cover' }) => {
   const wantThumb = THUMB_KINDS.has(item.kind)
   const ref = useRef<HTMLSpanElement>(null)
   const [inView, setInView] = useState(false)
@@ -57,8 +63,11 @@ const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className }) => {
       ref={ref}
       className={className}
       style={{
-        width: size,
-        height: size,
+        // A fixed square keeps grid/list cells uniform; 'contain' must be free
+        // to shrink to the image's ratio instead.
+        ...(fit === 'contain'
+          ? { maxWidth: size, maxHeight: size }
+          : { width: size, height: size }),
         flexShrink: 0,
         display: 'inline-flex',
         alignItems: 'center',
@@ -69,13 +78,17 @@ const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className }) => {
         <img
           src={src}
           alt=""
-          width={size}
-          height={size}
+          // Fixed intrinsic size reserves the cell before the image decodes;
+          // 'contain' has to stay free to size itself.
+          width={fit === 'contain' ? undefined : size}
+          height={fit === 'contain' ? undefined : size}
           draggable={false}
           style={{
-            width: size,
-            height: size,
-            objectFit: 'cover',
+            // 'contain' sizes to the image's own ratio inside the box; 'cover'
+            // fills a fixed square and crops.
+            ...(fit === 'contain'
+              ? { maxWidth: size, maxHeight: size, width: 'auto', height: 'auto' }
+              : { width: size, height: size, objectFit: 'cover' as const }),
             borderRadius: 2,
             display: 'block',
             background: 'var(--control-hover)'

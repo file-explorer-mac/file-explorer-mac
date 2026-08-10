@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NavigationPane from './NavigationPane'
-import { useExplorerStore } from '@/store/explorerStore'
+import {
+  useExplorerStore,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH
+} from '@/store/explorerStore'
 import { resetExplorerStore } from '@test/storeHelpers'
 import { installApiMock, type ApiMock } from '@test/apiMock'
 import { makeQuickLink, makeDrive, makeFolder, makeFileItem } from '@test/factories'
@@ -250,5 +254,49 @@ describe('NavigationPane', () => {
     expect(unpins).toHaveLength(1)
     const projectsRow = screen.getByText('Projects').closest('div')!
     expect(within(projectsRow).getByTitle('Unpin from Quick access')).toBeInTheDocument()
+  })
+})
+
+describe('NavigationPane — resizing', () => {
+  it('renders at the stored width', () => {
+    useExplorerStore.setState({ sidebarWidth: 260 })
+    const { container } = render(<NavigationPane />)
+    expect((container.querySelector('div') as HTMLElement).style.width).toBe('260px')
+  })
+
+  it('widens as the grip is dragged right, since the pane hugs the left edge', () => {
+    useExplorerStore.setState({ sidebarWidth: 240 })
+    const { container } = render(<NavigationPane />)
+    const grip = container.querySelector('[role="separator"]') as HTMLElement
+    fireEvent.mouseDown(grip, { clientX: 100 })
+    fireEvent.mouseMove(window, { clientX: 180 })
+    fireEvent.mouseUp(window)
+    expect(useExplorerStore.getState().sidebarWidth).toBe(320)
+  })
+
+  it('clamps to the min and max widths', () => {
+    useExplorerStore.setState({ sidebarWidth: 240 })
+    const { container } = render(<NavigationPane />)
+    const grip = container.querySelector('[role="separator"]') as HTMLElement
+
+    fireEvent.mouseDown(grip, { clientX: 0 })
+    fireEvent.mouseMove(window, { clientX: 5000 })
+    fireEvent.mouseUp(window)
+    expect(useExplorerStore.getState().sidebarWidth).toBe(SIDEBAR_MAX_WIDTH)
+
+    fireEvent.mouseDown(grip, { clientX: 0 })
+    fireEvent.mouseMove(window, { clientX: -5000 })
+    fireEvent.mouseUp(window)
+    expect(useExplorerStore.getState().sidebarWidth).toBe(SIDEBAR_MIN_WIDTH)
+  })
+
+  it('stops tracking the mouse after the drag ends', () => {
+    useExplorerStore.setState({ sidebarWidth: 240 })
+    const { container } = render(<NavigationPane />)
+    const grip = container.querySelector('[role="separator"]') as HTMLElement
+    fireEvent.mouseDown(grip, { clientX: 100 })
+    fireEvent.mouseUp(window)
+    fireEvent.mouseMove(window, { clientX: 400 })
+    expect(useExplorerStore.getState().sidebarWidth).toBe(240)
   })
 })

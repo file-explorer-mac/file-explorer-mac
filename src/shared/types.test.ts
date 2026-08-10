@@ -9,14 +9,14 @@ describe('IPC channel map', () => {
     expect(IPC.getHomeDir).toBe('fs:getHomeDir')
     expect(IPC.startDrag).toBe('dnd:startDrag')
     expect(IPC.openFullDiskAccessSettings).toBe('app:openFullDiskAccessSettings')
-    expect(IPC.windowMinimize).toBe('win:minimize')
-    expect(IPC.windowMaximizeChanged).toBe('win:maximizeChanged')
+    expect(IPC.windowClose).toBe('win:close')
+    expect(IPC.windowFullScreenChanged).toBe('win:fullScreenChanged')
     expect(IPC.navigateToPath).toBe('app:navigateToPath')
     expect(IPC.opProgress).toBe('fs:opProgress')
   })
 
   it('has every channel value namespaced with a "<scope>:<name>" prefix', () => {
-    const allowedScopes = new Set(['fs', 'app', 'win', 'dnd', 'update', 'clip'])
+    const allowedScopes = new Set(['fs', 'app', 'win', 'dnd', 'update', 'clip', 'cloud'])
     for (const value of Object.values(IPC)) {
       expect(value).toMatch(/^[a-z]+:[A-Za-z]+$/)
       expect(allowedScopes.has(value.split(':')[0])).toBe(true)
@@ -64,11 +64,13 @@ describe('IPC channel map', () => {
         'openWith',
         'openInTerminal',
         'opProgress',
-        'windowMinimize',
-        'windowToggleMaximize',
+        'cloudRoots',
+        'cloudInfo',
+        'cloudOpenWeb',
+        'cloudMakeOffline',
         'windowClose',
         'windowNew',
-        'windowMaximizeChanged',
+        'windowFullScreenChanged',
         'navigateToPath',
         'updateCheck',
         'updateInstall',

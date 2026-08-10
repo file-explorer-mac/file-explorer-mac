@@ -627,6 +627,64 @@ describe('useKeyboardShortcuts — arrow navigation', () => {
   })
 })
 
+describe('useKeyboardShortcuts — mouse thumb buttons', () => {
+  /** Dispatch a mouse event on window, as a real press would. */
+  function mouse(type: string, button: number): MouseEvent {
+    const ev = new MouseEvent(type, { button, bubbles: true, cancelable: true })
+    window.dispatchEvent(ev)
+    return ev
+  }
+
+  /**
+   * A tab three entries deep, parked at `index`. Three so a press that wrongly
+   * navigated twice would still have somewhere to go — which is what makes the
+   * assertions below able to see it.
+   */
+  function seedHistory(index: number): void {
+    useExplorerStore.setState({
+      tabs: [{ id: 't1', history: ['/a', '/b', '/c'], index }],
+      activeTabId: 't1'
+    })
+  }
+
+  const tabIndex = (): number => useExplorerStore.getState().tabs[0].index
+
+  it('button 3 goes back one entry per press, counting the trailing auxclick', () => {
+    seedHistory(2)
+    render(<Host />)
+    // A real press fires both events; acting on each would move two entries.
+    expect(mouse('mousedown', 3).defaultPrevented).toBe(true)
+    expect(mouse('auxclick', 3).defaultPrevented).toBe(true)
+    expect(tabIndex()).toBe(1)
+  })
+
+  it('button 4 goes forward one entry per press', () => {
+    seedHistory(0)
+    render(<Host />)
+    mouse('mousedown', 4)
+    mouse('auxclick', 4)
+    expect(tabIndex()).toBe(1)
+  })
+
+  it('does nothing at the ends of the history', () => {
+    const back = vi.spyOn(useExplorerStore.getState(), 'goBack')
+    const fwd = vi.spyOn(useExplorerStore.getState(), 'goForward')
+    render(<Host />)
+    mouse('mousedown', 3)
+    mouse('mousedown', 4)
+    expect(back).not.toHaveBeenCalled()
+    expect(fwd).not.toHaveBeenCalled()
+  })
+
+  it('leaves other buttons alone, so middle-click still opens a new tab', () => {
+    const back = vi.spyOn(useExplorerStore.getState(), 'goBack')
+    render(<Host />)
+    expect(mouse('mousedown', 1).defaultPrevented).toBe(false)
+    expect(mouse('auxclick', 1).defaultPrevented).toBe(false)
+    expect(back).not.toHaveBeenCalled()
+  })
+})
+
 describe('useKeyboardShortcuts — cleanup', () => {
   it('removes the keydown listener on unmount', () => {
     const spy = vi.spyOn(useExplorerStore.getState(), 'selectAll')

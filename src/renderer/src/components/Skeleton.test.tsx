@@ -25,9 +25,12 @@ describe('Skeleton (loading placeholder)', () => {
     const rows = root.children
     expect(rows).toHaveLength(26)
 
-    // Falls back to default widths (180 / 150 / 100) when columnWidths is empty.
+    // Falls back to default widths (320 / 180 / 150) when columnWidths is empty,
+    // with Size taking the remainder.
     const firstRow = rows[0] as HTMLElement
-    expect(firstRow.style.gridTemplateColumns).toBe('minmax(0, 1fr) 180px 150px 100px')
+    expect(firstRow.style.gridTemplateColumns).toBe(
+      'minmax(0, 320px) minmax(0, 180px) minmax(0, 150px) minmax(80px, 1fr)'
+    )
 
     // Each row: a name cell (icon + name block) + three metadata blocks => 4 direct children.
     expect(firstRow.children).toHaveLength(4)
@@ -39,11 +42,13 @@ describe('Skeleton (loading placeholder)', () => {
   it('renders the details view using explicit columnWidths when provided', () => {
     useExplorerStore.setState({
       viewMode: 'details',
-      columnWidths: { date: 200, type: 120, size: 90 }
+      columnWidths: { name: 280, date: 200, type: 120 }
     })
     const { container } = render(<Skeleton />)
     const firstRow = busyEl(container).children[0] as HTMLElement
-    expect(firstRow.style.gridTemplateColumns).toBe('minmax(0, 1fr) 200px 120px 90px')
+    expect(firstRow.style.gridTemplateColumns).toBe(
+      'minmax(0, 280px) minmax(0, 200px) minmax(0, 120px) minmax(80px, 1fr)'
+    )
   })
 
   it('renders the list view: 60 single-line entries', () => {

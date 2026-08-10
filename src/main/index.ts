@@ -4,6 +4,7 @@ import { existsSync, writeFileSync, statSync } from 'fs'
 import { IPC, type ConflictPolicy } from '../shared/types'
 import * as FS from './fileSystem'
 import * as CB from './clipboard'
+import { getCloudRoots, cloudInfo, openOnWeb, makeAvailableOffline } from './cloud'
 import { trackAppStarted } from './analytics'
 import { initAutoUpdater, checkForUpdates, installUpdate } from './updater'
 import { installAppMenu } from './menu'
@@ -89,11 +90,12 @@ function createWindow(): BrowserWindow {
     show: false,
     title: 'File Explorer',
     backgroundColor: '#f3f3f3',
-    // Frameless so we can render the title bar / tab strip ourselves.
-    frame: false,
+    // Hide the system title bar so we can render the tab strip ourselves, but
+    // keep the native traffic lights. `frame: false` would suppress those too,
+    // which is why the window controls used to be drawn in the renderer.
     titleBarStyle: 'hidden',
-    // Push macOS traffic lights off-screen; we draw our own controls.
-    trafficLightPosition: { x: -100, y: -100 },
+    // Inset the lights and centre them vertically in our 40px bar (--titlebar-h).
+    trafficLightPosition: { x: 20, y: 14 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
@@ -143,11 +145,13 @@ function createWindow(): BrowserWindow {
     })
   }
 
-  const emitMaximize = (): void => {
-    win.webContents.send(IPC.windowMaximizeChanged, win.isMaximized())
+  // macOS hides the traffic lights in full screen, so the title bar has to give
+  // back the space it reserves for them.
+  const emitFullScreen = (isFullScreen: boolean) => (): void => {
+    win.webContents.send(IPC.windowFullScreenChanged, isFullScreen)
   }
-  win.on('maximize', emitMaximize)
-  win.on('unmaximize', emitMaximize)
+  win.on('enter-full-screen', emitFullScreen(true))
+  win.on('leave-full-screen', emitFullScreen(false))
 
   // Only hand http(s) URLs to the OS; never open arbitrary schemes externally.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -223,6 +227,12 @@ function registerIpc(): void {
   ipcMain.handle(IPC.move, (e, src: string[], dest: string, policy: ConflictPolicy) =>
     FS.move(src, dest, policy, (p) => e.sender.send(IPC.opProgress, p))
   )
+  ipcMain.handle(IPC.cloudRoots, () => getCloudRoots())
+  ipcMain.handle(IPC.cloudInfo, (_e, p: string) => cloudInfo(p))
+  ipcMain.handle(IPC.cloudOpenWeb, (_e, p: string) => openOnWeb(p))
+  ipcMain.handle(IPC.cloudMakeOffline, (e, paths: string[]) =>
+    makeAvailableOffline(paths, (p) => e.sender.send(IPC.opProgress, p))
+  )
   ipcMain.handle(IPC.search, (_e, root: string, q: string) => FS.search(root, q))
   ipcMain.handle(IPC.getProperties, (_e, p: string) => FS.getProperties(p))
   ipcMain.handle(IPC.getFolderSize, (_e, p: string) => FS.getFolderSize(p))
@@ -250,13 +260,6 @@ function registerIpc(): void {
   const senderWindow = (e: IpcMainEvent): BrowserWindow | null =>
     BrowserWindow.fromWebContents(e.sender)
 
-  ipcMain.on(IPC.windowMinimize, (e) => senderWindow(e)?.minimize())
-  ipcMain.on(IPC.windowToggleMaximize, (e) => {
-    const w = senderWindow(e)
-    if (!w) return
-    if (w.isMaximized()) w.unmaximize()
-    else w.maximize()
-  })
   ipcMain.on(IPC.windowClose, (e) => senderWindow(e)?.close())
   ipcMain.on(IPC.windowNew, () => createWindow())
 
