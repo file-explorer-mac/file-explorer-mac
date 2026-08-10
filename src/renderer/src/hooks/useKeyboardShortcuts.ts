@@ -257,14 +257,20 @@ export function useKeyboardShortcuts(): void {
       if (e.button === 3 && s.canGoBack()) s.goBack()
       if (e.button === 4 && s.canGoForward()) s.goForward()
     }
+    // auxclick fires for the same press that mousedown already handled, so it
+    // only suppresses the default here — navigating again would move two
+    // history entries per click.
+    const onMouseNavAux = (e: MouseEvent): void => {
+      if (e.button === 3 || e.button === 4) e.preventDefault()
+    }
 
     window.addEventListener('keydown', onKey)
     window.addEventListener('mousedown', onMouseNav)
-    window.addEventListener('auxclick', onMouseNav)
+    window.addEventListener('auxclick', onMouseNavAux)
     return () => {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('mousedown', onMouseNav)
-      window.removeEventListener('auxclick', onMouseNav)
+      window.removeEventListener('auxclick', onMouseNavAux)
     }
   }, [])
 }
