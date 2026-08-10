@@ -408,6 +408,27 @@ describe('NavigationPane — categories', () => {
       expect(useExplorerStore.getState().categories[0].paths).toEqual(['/dropped/folder'])
     })
 
+    it('pins a folder dropped on the Quick access header', () => {
+      api.getPathForFile.mockReturnValue('/dropped/reports')
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.sectionHeader') as HTMLElement
+      fireEvent.dragOver(header, { dataTransfer: dt(['/dropped/reports']) })
+      expect(header.className).toMatch(/categoryDropTarget/)
+      fireEvent.drop(header, { dataTransfer: dt(['/dropped/reports']) })
+      expect(useExplorerStore.getState().pinnedLinks).toEqual([
+        { name: 'reports', path: '/dropped/reports', icon: 'documents' }
+      ])
+      expect(header.className).not.toMatch(/categoryDropTarget/)
+    })
+
+    it('clears the Quick access highlight on drag leave', () => {
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.sectionHeader') as HTMLElement
+      fireEvent.dragOver(header, { dataTransfer: dt(['/x']) })
+      fireEvent.dragLeave(header)
+      expect(header.className).not.toMatch(/categoryDropTarget/)
+    })
+
     it('clears the highlight on drag leave', () => {
       useExplorerStore.setState({ categories: [seed()] })
       const { container } = render(<NavigationPane />)

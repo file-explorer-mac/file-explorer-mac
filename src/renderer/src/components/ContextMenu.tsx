@@ -135,30 +135,6 @@ const ContextMenu: React.FC = () => {
             } as MenuItem
           ]
         : []),
-      ...(canPin
-        ? [
-            {
-              label: 'Add to category',
-              icon: 'star',
-              submenu: [
-                ...categories.map((c) => ({
-                  label: c.name,
-                  // Already there → nothing to do, so show it as done and inert.
-                  checked: c.paths.includes(target),
-                  disabled: c.paths.includes(target),
-                  onClick: () => addToCategory(c.id, [target])
-                })),
-                ...(categories.length ? [{ type: 'separator' as const }] : []),
-                {
-                  label: 'New category…',
-                  icon: 'add',
-                  // Seeded with this folder, then its title opens for renaming.
-                  onClick: () => addCategory(targetItem?.name, [target])
-                }
-              ]
-            } as MenuItem
-          ]
-        : []),
       {
         label: 'Open with…',
         disabled: !!targetItem && targetItem.isDirectory,
@@ -203,6 +179,27 @@ const ContextMenu: React.FC = () => {
                 isPinned(target)
                   ? unpinFromQuickAccess(target)
                   : pinToQuickAccess(target, targetItem!.name)
+            } as MenuItem,
+            // Sits with Quick access: both are "put this folder in the sidebar".
+            {
+              label: 'Pin to Category',
+              icon: 'group',
+              submenu: [
+                ...categories.map((c) => ({
+                  label: c.name,
+                  // Already there → nothing to do, so show it as done and inert.
+                  checked: c.paths.includes(target),
+                  disabled: c.paths.includes(target),
+                  onClick: () => addToCategory(c.id, [target])
+                })),
+                ...(categories.length ? [{ type: 'separator' as const }] : []),
+                {
+                  label: 'New category…',
+                  icon: 'add',
+                  // Seeded with this folder, then its title opens for renaming.
+                  onClick: () => addCategory(targetItem?.name, [target])
+                }
+              ]
             } as MenuItem
           ]
         : []),

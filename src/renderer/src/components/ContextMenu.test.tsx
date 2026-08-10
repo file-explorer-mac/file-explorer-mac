@@ -551,19 +551,19 @@ describe('ContextMenu', () => {
     })
   })
 
-  describe('add to category', () => {
+  describe('pin to category', () => {
     const folder = (): ReturnType<typeof makeFolder> =>
       makeFolder({ name: 'docs', path: '/p/docs' })
 
     it('is offered for folders only', async () => {
       openItemMenu(folder())
       const { unmount } = render(<ContextMenu />)
-      expect(screen.getByText('Add to category')).toBeInTheDocument()
+      expect(screen.getByText('Pin to Category')).toBeInTheDocument()
       unmount()
 
       openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }))
       render(<ContextMenu />)
-      expect(screen.queryByText('Add to category')).toBeNull()
+      expect(screen.queryByText('Pin to Category')).toBeNull()
     })
 
     it('adds the folder to an existing category', async () => {
@@ -572,7 +572,7 @@ describe('ContextMenu', () => {
         categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
       })
       render(<ContextMenu />)
-      await user.click(screen.getByText('Add to category'))
+      await user.click(screen.getByText('Pin to Category'))
       await user.click(screen.getByText('Work'))
       expect(useExplorerStore.getState().categories[0].paths).toEqual(['/p/docs'])
     })
@@ -583,7 +583,7 @@ describe('ContextMenu', () => {
         categories: [{ id: 'c1', name: 'Work', paths: ['/p/docs'], collapsed: false }]
       })
       render(<ContextMenu />)
-      await user.click(screen.getByText('Add to category'))
+      await user.click(screen.getByText('Pin to Category'))
       const row = screen.getByText('Work').closest('[role="menuitem"]')!
       expect(row).toHaveAttribute('aria-disabled', 'true')
       expect(row.querySelector('.gutterChecked')).not.toBeNull()
@@ -593,7 +593,7 @@ describe('ContextMenu', () => {
       const user = userEvent.setup()
       openItemMenu(folder())
       render(<ContextMenu />)
-      await user.click(screen.getByText('Add to category'))
+      await user.click(screen.getByText('Pin to Category'))
       await user.click(screen.getByText('New category…'))
       const [created] = useExplorerStore.getState().categories
       expect(created).toMatchObject({ name: 'docs', paths: ['/p/docs'] })

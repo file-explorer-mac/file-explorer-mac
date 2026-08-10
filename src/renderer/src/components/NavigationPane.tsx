@@ -163,7 +163,9 @@ const CategorySection: React.FC<CategorySectionProps> = ({ category, onOpenMenu 
       >
         <button
           type="button"
-          className={styles.sectionToggle}
+          // While renaming, the toggle shrinks to just its chevron so the input
+          // starts right next to it instead of halfway across the pane.
+          className={`${styles.sectionToggle} ${renaming ? styles.sectionToggleTight : ''}`}
           onClick={() => toggleCategory(category.id)}
           aria-expanded={!category.collapsed}
         >
@@ -237,7 +239,9 @@ const NavigationPane: React.FC = () => {
   const addCategory = useExplorerStore((s) => s.addCategory)
   const deleteCategory = useExplorerStore((s) => s.deleteCategory)
   const beginRenameCategory = useExplorerStore((s) => s.beginRenameCategory)
+  const pinToQuickAccess = useExplorerStore((s) => s.pinToQuickAccess)
   const [quickOpen, setQuickOpen] = useState(true)
+  const [quickDragOver, setQuickDragOver] = useState(false)
   const [pcOpen, setPcOpen] = useState(true)
   const [headerMenu, setHeaderMenu] = useState<{ id: string; x: number; y: number } | null>(null)
 
@@ -272,8 +276,22 @@ const NavigationPane: React.FC = () => {
         <div className={styles.section}>
           <button
             type="button"
-            className={styles.sectionHeader}
+            className={`${styles.sectionHeader} ${quickDragOver ? styles.categoryDropTarget : ''}`}
             onClick={() => setQuickOpen((v) => !v)}
+            // Quick access takes dropped folders too, same as a category.
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              e.dataTransfer.dropEffect = 'link'
+              if (!quickDragOver) setQuickDragOver(true)
+            }}
+            onDragLeave={() => setQuickDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setQuickDragOver(false)
+              for (const p of droppedPaths(e.dataTransfer)) pinToQuickAccess(p, basename(p))
+            }}
           >
             <Icon
               name={quickOpen ? 'chevronDown' : 'chevronRight'}

@@ -86,8 +86,8 @@ const PreviewPane: React.FC = () => {
         ) : (
           <div className={styles.body}>
             <div className={styles.previewBox}>
-              {/* 'contain' so the preview never distorts or crops the picture. */}
-              <Thumbnail item={current} size={previewWidth - 40} fit="contain" />
+              {/* The picture is the content here, so the box takes its shape. */}
+              <Thumbnail item={current} size={previewWidth - 40} frame="intrinsic" />
             </div>
             <div className={styles.name}>{current.name}</div>
 

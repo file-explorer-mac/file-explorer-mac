@@ -79,6 +79,10 @@
   cursor: default;
 }
 
+.sectionToggleTight {
+  flex: 0 0 auto;
+}
+
 .sectionToggle .sectionLabel {
   overflow: hidden;
   text-overflow: ellipsis;
