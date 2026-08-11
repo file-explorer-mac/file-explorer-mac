@@ -321,6 +321,24 @@ function activeTab(state: ExplorerState): Tab {
 const initialPrefs = loadPrefs()
 let progressSubscribed = false
 
+/**
+ * Carry a pre-1.2.0 "Favorites" list into a category.
+ *
+ * Favorites were a Home-page-only list that categories replace. `persist` no
+ * longer writes the key, and `savePrefs` replaces the whole blob rather than
+ * merging, so without this the next preference change — a pane resize, a sort —
+ * would drop the user's favorites for good.
+ *
+ * Idempotent: the first persist after this rewrites storage without `favorites`,
+ * so it stops firing on its own.
+ */
+function migratedCategories(prefs: Partial<Prefs> & { favorites?: string[] }): SidebarCategory[] {
+  const categories = prefs.categories ?? []
+  const favorites = prefs.favorites ?? []
+  if (!favorites.length) return categories
+  return [...categories, { id: 'cat-favorites', name: 'Favorites', paths: favorites, collapsed: false }]
+}
+
 /** Persist the subset of state we remember across launches. */
 function persist(s: ExplorerState): void {
   savePrefs({
@@ -365,7 +383,7 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   sidebarWidth: initialPrefs.sidebarWidth ?? SIDEBAR_DEFAULT_WIDTH,
   pinnedLinks: initialPrefs.pinnedLinks ?? [],
 
-  categories: initialPrefs.categories ?? [],
+  categories: migratedCategories(initialPrefs),
   renamingCategoryId: null,
 
   cloudRoots: [],
