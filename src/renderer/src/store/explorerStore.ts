@@ -6,7 +6,8 @@ import type {
   DriveItem,
   FileItem,
   OpProgress,
-  QuickLink
+  QuickLink,
+  SidebarCategory
 } from '@shared/types'
 import { kindLabel } from '@shared/fileKinds'
 import { basename, parentPath, HOME_PATH } from '@/utils/pathUtils'
@@ -51,6 +52,7 @@ export const SIDEBAR_MAX_WIDTH = 520
 /** Persisted user preferences (localStorage). */
 interface Prefs {
   pinnedLinks: QuickLink[]
+  categories: SidebarCategory[]
   previewOpen: boolean
   previewWidth: number
   sidebarWidth: number
@@ -62,8 +64,6 @@ interface Prefs {
   showHidden: boolean
   /** Absolute paths of recently opened files/folders, most-recent first. */
   recents: string[]
-  /** Absolute paths the user pinned to the Home "Favorites" tab. */
-  favorites: string[]
 }
 
 /** How many recently opened items to remember on the Home page. */
@@ -137,14 +137,18 @@ interface ExplorerState {
   sidebarWidth: number
   pinnedLinks: QuickLink[]
 
+  /** User-made sidebar groups, shown between Quick access and This PC. */
+  categories: SidebarCategory[]
+  /** Category whose title is currently being edited inline; null when none. */
+  renamingCategoryId: string | null
+
   /** Cloud sync folders on this machine, listed under "This PC". */
   cloudRoots: CloudRoot[]
   /** Cloud details for the current context-menu target; null when not synced. */
   contextCloud: CloudInfo | null
 
-  // Home page ("Home" with Recent + Favorites tabs)
+  // Home page ("Home" with the Recent list)
   recents: string[]
-  favorites: string[]
 
   // File-operation infrastructure
   undoStack: UndoEntry[]
@@ -248,18 +252,26 @@ interface ExplorerState {
   /** Opens a folder in a background-created tab (middle-click / context menu). */
   openInNewTab: (path: string) => void
 
+  // Sidebar categories
+  /** Creates a category and puts its title straight into rename mode. */
+  addCategory: (name?: string, paths?: string[]) => string
+  renameCategory: (id: string, name: string) => void
+  deleteCategory: (id: string) => void
+  toggleCategory: (id: string) => void
+  beginRenameCategory: (id: string | null) => void
+  /** Adds folders to a category, ignoring ones already in it. */
+  addToCategory: (id: string, paths: string[]) => void
+  removeFromCategory: (id: string, path: string) => void
+
   // Quick access pins
   pinToQuickAccess: (path: string, name: string) => void
   unpinFromQuickAccess: (path: string) => void
   isPinned: (path: string) => boolean
 
-  // Home page: recently opened items + favorites
+  // Home page: recently opened items
   recordRecent: (path: string) => void
   removeRecent: (path: string) => void
   clearRecents: () => void
-  addFavorite: (path: string) => void
-  removeFavorite: (path: string) => void
-  isFavorite: (path: string) => boolean
 
   // Conflict-aware transfers + undo
   performTransfer: (
@@ -294,6 +306,10 @@ interface ExplorerState {
 let tabCounter = 0
 const newTabId = (): string => `tab-${++tabCounter}`
 
+let categoryCounter = 0
+/** Unique within a session; persisted categories keep whatever id they were saved with. */
+const newCategoryId = (): string => `cat-${Date.now().toString(36)}-${++categoryCounter}`
+
 // Monotonic token: every items-producing async op (loadDir/runSearch) bumps it,
 // and only the most recent op is allowed to commit results. Kills stale-load races.
 let loadSeq = 0
@@ -305,10 +321,29 @@ function activeTab(state: ExplorerState): Tab {
 const initialPrefs = loadPrefs()
 let progressSubscribed = false
 
+/**
+ * Carry a pre-1.2.0 "Favorites" list into a category.
+ *
+ * Favorites were a Home-page-only list that categories replace. `persist` no
+ * longer writes the key, and `savePrefs` replaces the whole blob rather than
+ * merging, so without this the next preference change — a pane resize, a sort —
+ * would drop the user's favorites for good.
+ *
+ * Idempotent: the first persist after this rewrites storage without `favorites`,
+ * so it stops firing on its own.
+ */
+function migratedCategories(prefs: Partial<Prefs> & { favorites?: string[] }): SidebarCategory[] {
+  const categories = prefs.categories ?? []
+  const favorites = prefs.favorites ?? []
+  if (!favorites.length) return categories
+  return [...categories, { id: 'cat-favorites', name: 'Favorites', paths: favorites, collapsed: false }]
+}
+
 /** Persist the subset of state we remember across launches. */
 function persist(s: ExplorerState): void {
   savePrefs({
     pinnedLinks: s.pinnedLinks,
+    categories: s.categories,
     previewOpen: s.previewOpen,
     previewWidth: s.previewWidth,
     sidebarWidth: s.sidebarWidth,
@@ -318,8 +353,7 @@ function persist(s: ExplorerState): void {
     sortKey: s.sortKey,
     sortDir: s.sortDir,
     showHidden: s.showHidden,
-    recents: s.recents,
-    favorites: s.favorites
+    recents: s.recents
   })
 }
 
@@ -349,11 +383,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   sidebarWidth: initialPrefs.sidebarWidth ?? SIDEBAR_DEFAULT_WIDTH,
   pinnedLinks: initialPrefs.pinnedLinks ?? [],
 
+  categories: migratedCategories(initialPrefs),
+  renamingCategoryId: null,
+
   cloudRoots: [],
   contextCloud: null,
 
   recents: initialPrefs.recents ?? [],
-  favorites: initialPrefs.favorites ?? [],
 
   undoStack: [],
   pendingTransfer: null,
@@ -844,6 +880,69 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set((s) => ({ tabs: [...s.tabs, { id, history: [path], index: 0 }] }))
   },
 
+  addCategory: (name, paths) => {
+    const id = newCategoryId()
+    const category: SidebarCategory = {
+      id,
+      name: name?.trim() || 'New category',
+      paths: paths ?? [],
+      collapsed: false
+    }
+    // New categories open in rename mode, the way a new folder does.
+    set((s) => ({ categories: [...s.categories, category], renamingCategoryId: id }))
+    persist(get())
+    return id
+  },
+
+  renameCategory: (id, name) => {
+    const trimmed = name.trim()
+    set((s) => ({
+      // An empty name would leave an unclickable blank row; keep the old one.
+      categories: trimmed
+        ? s.categories.map((c) => (c.id === id ? { ...c, name: trimmed } : c))
+        : s.categories,
+      renamingCategoryId: null
+    }))
+    persist(get())
+  },
+
+  deleteCategory: (id) => {
+    set((s) => ({
+      categories: s.categories.filter((c) => c.id !== id),
+      renamingCategoryId: s.renamingCategoryId === id ? null : s.renamingCategoryId
+    }))
+    persist(get())
+  },
+
+  toggleCategory: (id) => {
+    set((s) => ({
+      categories: s.categories.map((c) => (c.id === id ? { ...c, collapsed: !c.collapsed } : c))
+    }))
+    persist(get())
+  },
+
+  beginRenameCategory: (id) => set({ renamingCategoryId: id }),
+
+  addToCategory: (id, paths) => {
+    set((s) => ({
+      categories: s.categories.map((c) =>
+        c.id === id
+          ? { ...c, paths: [...c.paths, ...paths.filter((p) => !c.paths.includes(p))] }
+          : c
+      )
+    }))
+    persist(get())
+  },
+
+  removeFromCategory: (id, path) => {
+    set((s) => ({
+      categories: s.categories.map((c) =>
+        c.id === id ? { ...c, paths: c.paths.filter((p) => p !== path) } : c
+      )
+    }))
+    persist(get())
+  },
+
   pinToQuickAccess: (path, name) => {
     set((s) =>
       s.pinnedLinks.some((l) => l.path === path)
@@ -875,19 +974,6 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set({ recents: [] })
     persist(get())
   },
-
-  addFavorite: (path) => {
-    if (path === HOME_PATH) return
-    set((s) => (s.favorites.includes(path) ? {} : { favorites: [path, ...s.favorites] }))
-    persist(get())
-  },
-
-  removeFavorite: (path) => {
-    set((s) => ({ favorites: s.favorites.filter((p) => p !== path) }))
-    persist(get())
-  },
-
-  isFavorite: (path) => get().favorites.includes(path),
 
   performTransfer: async (srcPaths, destDir, op, clearCut = false) => {
     if (!srcPaths.length) return

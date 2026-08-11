@@ -202,26 +202,6 @@ describe('ContextMenu', () => {
       expect(unpinFromQuickAccess).toHaveBeenCalledWith('/p/d')
     })
 
-    it('adds a target to Favorites when not yet favorited', async () => {
-      const addFavorite = spyAction('addFavorite')
-      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), { favorites: [] })
-      render(<ContextMenu />)
-      expect(screen.getByText('Add to Favorites')).toBeInTheDocument()
-      await clickItem('Add to Favorites')
-      expect(addFavorite).toHaveBeenCalledWith('/p/a.txt')
-    })
-
-    it('removes a target from Favorites when already favorited', async () => {
-      const removeFavorite = spyAction('removeFavorite')
-      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), {
-        favorites: ['/p/a.txt']
-      })
-      render(<ContextMenu />)
-      expect(screen.getByText('Remove from Favorites')).toBeInTheDocument()
-      await clickItem('Remove from Favorites')
-      expect(removeFavorite).toHaveBeenCalledWith('/p/a.txt')
-    })
-
     it('Copy as path runs copyPathSelection', async () => {
       const copyPathSelection = spyAction('copyPathSelection')
       openItemMenu()
@@ -498,6 +478,21 @@ describe('ContextMenu', () => {
       expect(screen.getByText('Make available offline')).toBeInTheDocument()
     })
 
+    it('adds no cloud section at all when neither entry applies', () => {
+      // Google Drive has no derivable web URL, and a downloaded file has nothing
+      // to fetch — so the separator must not be left dangling on its own.
+      openItemMenu(
+        makeFileItem({ name: 'a.txt', path: '/p/a.txt' }),
+        cloud({ provider: 'googledrive', dataless: false })
+      )
+      const { container } = render(<ContextMenu />)
+      expect(screen.queryByText(/^Open on /)).toBeNull()
+      expect(screen.queryByText('Make available offline')).toBeNull()
+      // Properties is the last row; nothing trails it.
+      const rows = container.querySelectorAll('[role="menuitem"]')
+      expect(rows[rows.length - 1].textContent).toContain('Properties')
+    })
+
     it('hides the download for a file that is already on disk', () => {
       openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }), cloud({ dataless: false }))
       render(<ContextMenu />)
@@ -533,6 +528,59 @@ describe('ContextMenu', () => {
       })
       render(<ContextMenu />)
       expect(screen.getByText('Open on Dropbox')).toBeInTheDocument()
+    })
+  })
+
+  describe('pin to category', () => {
+    const folder = (): ReturnType<typeof makeFolder> =>
+      makeFolder({ name: 'docs', path: '/p/docs' })
+
+    it('is offered for files as well as folders', async () => {
+      openItemMenu(folder())
+      const { unmount } = render(<ContextMenu />)
+      expect(screen.getByText('Pin to Category')).toBeInTheDocument()
+      unmount()
+
+      // Unlike Quick access, a category can hold a file too.
+      openItemMenu(makeFileItem({ name: 'a.txt', path: '/p/a.txt' }))
+      render(<ContextMenu />)
+      expect(screen.getByText('Pin to Category')).toBeInTheDocument()
+      expect(screen.queryByText('Pin to Quick access')).toBeNull()
+    })
+
+    it('adds the folder to an existing category', async () => {
+      const user = userEvent.setup()
+      openItemMenu(folder(), {
+        categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+      })
+      render(<ContextMenu />)
+      await user.click(screen.getByText('Pin to Category'))
+      await user.click(screen.getByText('Work'))
+      expect(useExplorerStore.getState().categories[0].paths).toEqual(['/p/docs'])
+    })
+
+    it('shows a category the folder is already in as done and inert', async () => {
+      const user = userEvent.setup()
+      openItemMenu(folder(), {
+        categories: [{ id: 'c1', name: 'Work', paths: ['/p/docs'], collapsed: false }]
+      })
+      render(<ContextMenu />)
+      await user.click(screen.getByText('Pin to Category'))
+      const row = screen.getByText('Work').closest('[role="menuitem"]')!
+      expect(row).toHaveAttribute('aria-disabled', 'true')
+      expect(row.querySelector('.gutterChecked')).not.toBeNull()
+    })
+
+    it('creates a new category seeded with the folder and its name', async () => {
+      const user = userEvent.setup()
+      openItemMenu(folder())
+      render(<ContextMenu />)
+      await user.click(screen.getByText('Pin to Category'))
+      await user.click(screen.getByText('New category…'))
+      const [created] = useExplorerStore.getState().categories
+      expect(created).toMatchObject({ name: 'docs', paths: ['/p/docs'] })
+      // Created then opened for renaming, so the suggested name is editable.
+      expect(useExplorerStore.getState().renamingCategoryId).toBe(created.id)
     })
   })
 

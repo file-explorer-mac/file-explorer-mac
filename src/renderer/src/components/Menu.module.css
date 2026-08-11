@@ -27,9 +27,9 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   height: 34px;
-  padding: 0 10px 0 4px;
+  padding: 0 12px 0 8px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
   cursor: default;
@@ -52,20 +52,21 @@
   color: #c42b1c;
 }
 
-.check {
-  width: 22px;
-  display: flex;
-  justify-content: center;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.icon {
+/*
+ * Single leading gutter holding whichever of the two a row has — a checkmark or
+ * an icon. They never coexist, and two stacked columns pushed every label 60px
+ * in even when the row had neither.
+ */
+.gutter {
   width: 18px;
   display: flex;
   justify-content: center;
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+.gutterChecked {
+  color: var(--accent);
 }
 
 .label {

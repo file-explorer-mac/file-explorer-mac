@@ -109,28 +109,45 @@ describe('Thumbnail', () => {
     const img = screen.getByRole('presentation') as HTMLImageElement
     expect(img.tagName).toBe('IMG')
     expect(img).toHaveAttribute('src', 'data:image/png;base64,AAAA')
-    expect(img).toHaveAttribute('width', '64')
-    expect(img).toHaveAttribute('height', '64')
-    // Default 'cover' fills a square cell, cropping to keep the grid uniform.
-    expect(img.style.objectFit).toBe('cover')
+    // Never cropped and never stretched: bounded by the cell, but only one
+    // dimension is ever pinned, so the image keeps its own proportions.
+    expect(img.style.objectFit).toBe('')
+    expect(img.style.maxWidth).toBe('100%')
+    expect(img.style.maxHeight).toBe('100%')
+    expect(img.style.width).toBe('auto')
+    expect(img.style.height).toBe('auto')
   })
 
-  it('keeps the image ratio in contain mode instead of cropping it square', async () => {
+  it('reserves a fixed square cell by default so grid rows stay aligned', async () => {
+    const item = makeFileItem({ kind: 'image', path: '/p/wide.jpg', ext: 'jpg', modified: 42 })
+    vi.mocked(cachedThumbnail).mockReturnValue('data:image/png;base64,AAAA')
+
+    const { container } = render(<Thumbnail item={item} size={64} />)
+    scrollIntoView()
+    await act(async () => {})
+
+    const box = container.querySelector('span') as HTMLElement
+    expect(box.style.width).toBe('64px')
+    expect(box.style.height).toBe('64px')
+  })
+
+  it('lets the box take the image’s own shape in intrinsic mode', async () => {
     const item = makeFileItem({ kind: 'image', path: '/p/wide.jpg', ext: 'jpg', modified: 42 })
     vi.mocked(cachedThumbnail).mockReturnValue(undefined)
     vi.mocked(loadThumbnail).mockResolvedValue('data:image/png;base64,AAAA')
 
-    render(<Thumbnail item={item} size={220} fit="contain" />)
+    const { container } = render(<Thumbnail item={item} size={220} frame="intrinsic" />)
     scrollIntoView()
     await act(async () => {})
 
+    // The box is bounded rather than fixed, so it shrinks to the picture.
+    const box = container.querySelector('span') as HTMLElement
+    expect(box.style.maxWidth).toBe('220px')
+    expect(box.style.width).toBe('')
+
     const img = screen.getByRole('presentation') as HTMLImageElement
-    // No fixed width/height and no cropping — the picture sizes to its own ratio.
-    expect(img).not.toHaveAttribute('width')
-    expect(img).not.toHaveAttribute('height')
-    expect(img.style.objectFit).toBe('')
     expect(img.style.maxWidth).toBe('220px')
-    expect(img.style.maxHeight).toBe('220px')
+    expect(img.style.objectFit).toBe('')
   })
 
   it('falls back to the FileGlyph when loadThumbnail resolves null', async () => {

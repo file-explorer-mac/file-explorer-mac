@@ -10,6 +10,7 @@ import {
 import { resetExplorerStore } from '@test/storeHelpers'
 import { installApiMock, type ApiMock } from '@test/apiMock'
 import { makeQuickLink, makeDrive, makeFolder, makeFileItem } from '@test/factories'
+import type { SidebarCategory } from '@shared/types'
 
 let api: ApiMock
 
@@ -298,5 +299,272 @@ describe('NavigationPane — resizing', () => {
     fireEvent.mouseUp(window)
     fireEvent.mouseMove(window, { clientX: 400 })
     expect(useExplorerStore.getState().sidebarWidth).toBe(240)
+  })
+})
+
+describe('NavigationPane — categories', () => {
+  const seed = (over: Partial<SidebarCategory> = {}): SidebarCategory => ({
+    id: 'c1',
+    name: 'Work',
+    paths: ['/p/docs'],
+    collapsed: false,
+    ...over
+  })
+
+  it('lists categories between Quick access and This PC', () => {
+    useExplorerStore.setState({ categories: [seed()] })
+    const { container } = render(<NavigationPane />)
+    const labels = Array.from(container.querySelectorAll('.sectionLabel')).map((n) => n.textContent)
+    expect(labels).toEqual(['Quick access', 'Work', 'This PC'])
+  })
+
+  it('shows a category’s folders by their basename', () => {
+    useExplorerStore.setState({ categories: [seed({ paths: ['/p/docs', '/q/photos'] })] })
+    render(<NavigationPane />)
+    expect(screen.getByText('docs')).toBeInTheDocument()
+    expect(screen.getByText('photos')).toBeInTheDocument()
+  })
+
+  it('collapses and expands from the header toggle', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({ categories: [seed()] })
+    render(<NavigationPane />)
+    await user.click(screen.getByText('Work'))
+    expect(useExplorerStore.getState().categories[0].collapsed).toBe(true)
+  })
+
+  it('hides the folders while collapsed', () => {
+    useExplorerStore.setState({ categories: [seed({ collapsed: true })] })
+    render(<NavigationPane />)
+    expect(screen.queryByText('docs')).toBeNull()
+  })
+
+  it('tells an empty category what it is for', () => {
+    useExplorerStore.setState({ categories: [seed({ paths: [] })] })
+    render(<NavigationPane />)
+    expect(screen.getByText('Drag files or folders here')).toBeInTheDocument()
+  })
+
+  it('creates a category from the New category row', async () => {
+    const user = userEvent.setup()
+    render(<NavigationPane />)
+    await user.click(screen.getByText('New category'))
+    expect(useExplorerStore.getState().categories).toHaveLength(1)
+  })
+
+  it('removes a folder from its category', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({ categories: [seed()] })
+    const { container } = render(<NavigationPane />)
+    await user.click(container.querySelector('.unpin') as HTMLElement)
+    expect(useExplorerStore.getState().categories[0].paths).toEqual([])
+  })
+
+  describe('inline rename', () => {
+    it('edits the title in place and commits on Enter', async () => {
+      const user = userEvent.setup()
+      useExplorerStore.setState({ categories: [seed()], renamingCategoryId: 'c1' })
+      render(<NavigationPane />)
+      const input = screen.getByLabelText('Category name')
+      await user.clear(input)
+      await user.type(input, 'Clients{Enter}')
+      expect(useExplorerStore.getState().categories[0].name).toBe('Clients')
+      expect(useExplorerStore.getState().renamingCategoryId).toBeNull()
+    })
+
+    it('keeps the old name on Escape', async () => {
+      const user = userEvent.setup()
+      useExplorerStore.setState({ categories: [seed()], renamingCategoryId: 'c1' })
+      render(<NavigationPane />)
+      const input = screen.getByLabelText('Category name')
+      await user.clear(input)
+      await user.type(input, 'Nope{Escape}')
+      expect(useExplorerStore.getState().categories[0].name).toBe('Work')
+      expect(useExplorerStore.getState().renamingCategoryId).toBeNull()
+    })
+
+    it('commits on blur so clicking away does not strand the editor', () => {
+      useExplorerStore.setState({ categories: [seed()], renamingCategoryId: 'c1' })
+      render(<NavigationPane />)
+      const input = screen.getByLabelText('Category name') as HTMLInputElement
+      input.value = 'Archive'
+      fireEvent.blur(input)
+      expect(useExplorerStore.getState().categories[0].name).toBe('Archive')
+    })
+  })
+
+  describe('drag and drop', () => {
+    const dt = (paths: string[]): DataTransfer =>
+      ({ files: paths.map((p) => new File([''], p)), dropEffect: 'none' }) as unknown as DataTransfer
+
+    it('adds a dropped folder to the category', () => {
+      api.getPathForFile.mockReturnValue('/dropped/folder')
+      useExplorerStore.setState({ categories: [seed({ paths: [] })] })
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.categoryHeader') as HTMLElement
+      fireEvent.dragOver(header, { dataTransfer: dt(['/dropped/folder']) })
+      expect(header.className).toMatch(/categoryDropTarget/)
+      fireEvent.drop(header, { dataTransfer: dt(['/dropped/folder']) })
+      expect(useExplorerStore.getState().categories[0].paths).toEqual(['/dropped/folder'])
+    })
+
+    it('pins a folder dropped on the Quick access header', () => {
+      api.getPathForFile.mockReturnValue('/dropped/reports')
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.sectionHeader') as HTMLElement
+      fireEvent.dragOver(header, { dataTransfer: dt(['/dropped/reports']) })
+      expect(header.className).toMatch(/categoryDropTarget/)
+      fireEvent.drop(header, { dataTransfer: dt(['/dropped/reports']) })
+      expect(useExplorerStore.getState().pinnedLinks).toEqual([
+        { name: 'reports', path: '/dropped/reports', icon: 'documents' }
+      ])
+      expect(header.className).not.toMatch(/categoryDropTarget/)
+    })
+
+    it('clears the Quick access highlight on drag leave', () => {
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.sectionHeader') as HTMLElement
+      fireEvent.dragOver(header, { dataTransfer: dt(['/x']) })
+      fireEvent.dragLeave(header)
+      expect(header.className).not.toMatch(/categoryDropTarget/)
+    })
+
+    it('clears the highlight on drag leave', () => {
+      useExplorerStore.setState({ categories: [seed()] })
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.categoryHeader') as HTMLElement
+      fireEvent.dragOver(header, { dataTransfer: dt(['/x']) })
+      expect(header.className).toMatch(/categoryDropTarget/)
+      fireEvent.dragLeave(header)
+      expect(header.className).not.toMatch(/categoryDropTarget/)
+    })
+
+    it('ignores a drop that resolves to no paths', () => {
+      api.getPathForFile.mockReturnValue('')
+      useExplorerStore.setState({ categories: [seed({ paths: [] })] })
+      const { container } = render(<NavigationPane />)
+      const header = container.querySelector('.categoryHeader') as HTMLElement
+      fireEvent.drop(header, { dataTransfer: dt(['/x']) })
+      expect(useExplorerStore.getState().categories[0].paths).toEqual([])
+    })
+  })
+
+  describe('header menu', () => {
+    it('renames from the options button', async () => {
+      const user = userEvent.setup()
+      useExplorerStore.setState({ categories: [seed()] })
+      render(<NavigationPane />)
+      await user.click(screen.getByLabelText('Options for Work'))
+      await user.click(screen.getByText('Rename'))
+      expect(useExplorerStore.getState().renamingCategoryId).toBe('c1')
+    })
+
+    it('deletes the category, leaving the folders alone', async () => {
+      const user = userEvent.setup()
+      useExplorerStore.setState({ categories: [seed()] })
+      render(<NavigationPane />)
+      await user.click(screen.getByLabelText('Options for Work'))
+      await user.click(screen.getByText('Delete category'))
+      expect(useExplorerStore.getState().categories).toEqual([])
+    })
+
+    it('opens from a right-click on the header', () => {
+      useExplorerStore.setState({ categories: [seed()] })
+      const { container } = render(<NavigationPane />)
+      fireEvent.contextMenu(container.querySelector('.categoryHeader') as HTMLElement)
+      expect(screen.getByText('Delete category')).toBeInTheDocument()
+    })
+  })
+})
+
+describe('NavigationPane — files pinned in a category', () => {
+  const withCategory = (paths: string[]): void => {
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths, collapsed: false }]
+    })
+  }
+
+  it('opens a pinned file instead of navigating to it', async () => {
+    const user = userEvent.setup()
+    const file = makeFileItem({ name: 'spec.pdf', path: '/p/spec.pdf' })
+    api.getFileItem.mockResolvedValue({ ok: true, data: file })
+    withCategory(['/p/spec.pdf'])
+    render(<NavigationPane />)
+
+    // The unresolved fallback row shows the same basename, so wait for the
+    // file-only affordance before clicking.
+    await screen.findByTitle('Remove from category')
+    await user.click(screen.getByText('spec.pdf'))
+    expect(api.openPath).toHaveBeenCalledWith('/p/spec.pdf')
+    // A file is not a location, so the current folder must not change.
+    expect(useExplorerStore.getState().currentPath).not.toBe('/p/spec.pdf')
+  })
+
+  it('gives a pinned file no expand control', async () => {
+    const file = makeFileItem({ name: 'spec.pdf', path: '/p/spec.pdf' })
+    api.getFileItem.mockResolvedValue({ ok: true, data: file })
+    withCategory(['/p/spec.pdf'])
+    const { container } = render(<NavigationPane />)
+    await screen.findByTitle('Remove from category')
+    expect(container.querySelector('.chevronSpacer')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Expand' })).toBeNull()
+  })
+
+  it('removes a pinned file from its category', async () => {
+    const user = userEvent.setup()
+    api.getFileItem.mockResolvedValue({
+      ok: true,
+      data: makeFileItem({ name: 'spec.pdf', path: '/p/spec.pdf' })
+    })
+    withCategory(['/p/spec.pdf'])
+    render(<NavigationPane />)
+    await user.click(await screen.findByTitle('Remove from category'))
+    expect(useExplorerStore.getState().categories[0].paths).toEqual([])
+  })
+
+  it('keeps folders expandable alongside files', async () => {
+    api.getFileItem.mockResolvedValue({
+      ok: true,
+      data: makeFolder({ name: 'proj', path: '/p/proj' })
+    })
+    withCategory(['/p/proj'])
+    render(<NavigationPane />)
+    await screen.findByText('proj')
+    expect(screen.getByRole('button', { name: 'Expand' })).toBeInTheDocument()
+  })
+
+  it('falls back to the basename until an entry resolves', () => {
+    api.getFileItem.mockReturnValue(new Promise(() => {}))
+    withCategory(['/p/unresolved'])
+    render(<NavigationPane />)
+    expect(screen.getByText('unresolved')).toBeInTheDocument()
+  })
+})
+
+describe('NavigationPane — the New category affordance', () => {
+  it('is a labelled row while there are no categories', () => {
+    render(<NavigationPane />)
+    expect(screen.getByText('New category')).toBeInTheDocument()
+    expect(screen.queryByLabelText('New category')).toBeNull()
+  })
+
+  it('demotes to a small corner button once a category exists', () => {
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
+    render(<NavigationPane />)
+    // The explanatory row is gone; only the compact button remains.
+    expect(screen.queryByText('New category')).toBeNull()
+    expect(screen.getByLabelText('New category')).toBeInTheDocument()
+  })
+
+  it('still creates a category from the corner button', async () => {
+    const user = userEvent.setup()
+    useExplorerStore.setState({
+      categories: [{ id: 'c1', name: 'Work', paths: [], collapsed: false }]
+    })
+    render(<NavigationPane />)
+    await user.click(screen.getByLabelText('New category'))
+    expect(useExplorerStore.getState().categories).toHaveLength(2)
   })
 })

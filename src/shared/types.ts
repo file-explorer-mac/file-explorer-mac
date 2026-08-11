@@ -72,6 +72,15 @@ export interface QuickLink {
   icon: QuickLinkIcon
 }
 
+/** A user-made sidebar group holding folders of their choosing. */
+export interface SidebarCategory {
+  id: string
+  name: string
+  /** Absolute folder paths, in the order they were added. */
+  paths: string[]
+  collapsed: boolean
+}
+
 /** Result envelope so the renderer can surface errors without try/catch noise. */
 export interface Result<T> {
   ok: boolean

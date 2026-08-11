@@ -9,11 +9,15 @@ interface ThumbnailProps {
   size: number
   className?: string
   /**
-   * 'cover' crops to a square, which is what the uniform grid/list cells want.
-   * 'contain' keeps the image's own aspect ratio — use it wherever the picture
-   * itself is the point, like the preview pane.
+   * Neither value ever crops or stretches — the image always keeps its own
+   * aspect ratio. They differ only in the box it sits in:
+   *
+   * - 'square' (default) reserves a fixed size×size cell and letterboxes the
+   *   image inside it, so grid and list rows stay aligned.
+   * - 'intrinsic' lets the box shrink to the image's own shape, bounded by
+   *   `size`. For the preview pane, where the picture is the content.
    */
-  fit?: 'cover' | 'contain'
+  frame?: 'square' | 'intrinsic'
 }
 
 // Kinds the OS thumbnailer can preview meaningfully.
@@ -25,7 +29,12 @@ const THUMB_KINDS = new Set<FileKind>(['image', 'video', 'pdf'])
  * folder with thousands of files doesn't build thousands of SVGs / fire
  * thousands of thumbnail requests up front.
  */
-const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className, fit = 'cover' }) => {
+const ThumbnailImpl: React.FC<ThumbnailProps> = ({
+  item,
+  size,
+  className,
+  frame = 'square'
+}) => {
   const wantThumb = THUMB_KINDS.has(item.kind)
   const ref = useRef<HTMLSpanElement>(null)
   const [inView, setInView] = useState(false)
@@ -63,9 +72,9 @@ const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className, fit = 
       ref={ref}
       className={className}
       style={{
-        // A fixed square keeps grid/list cells uniform; 'contain' must be free
-        // to shrink to the image's ratio instead.
-        ...(fit === 'contain'
+        // 'square' reserves the cell so rows stay aligned; 'intrinsic' shrinks
+        // to whatever shape the image turns out to be.
+        ...(frame === 'intrinsic'
           ? { maxWidth: size, maxHeight: size }
           : { width: size, height: size }),
         flexShrink: 0,
@@ -78,17 +87,14 @@ const ThumbnailImpl: React.FC<ThumbnailProps> = ({ item, size, className, fit = 
         <img
           src={src}
           alt=""
-          // Fixed intrinsic size reserves the cell before the image decodes;
-          // 'contain' has to stay free to size itself.
-          width={fit === 'contain' ? undefined : size}
-          height={fit === 'contain' ? undefined : size}
           draggable={false}
           style={{
-            // 'contain' sizes to the image's own ratio inside the box; 'cover'
-            // fills a fixed square and crops.
-            ...(fit === 'contain'
-              ? { maxWidth: size, maxHeight: size, width: 'auto', height: 'auto' }
-              : { width: size, height: size, objectFit: 'cover' as const }),
+            // Bounded by the box and never given both dimensions, so the image
+            // is only ever scaled down — never cropped, never stretched.
+            maxWidth: frame === 'intrinsic' ? size : '100%',
+            maxHeight: frame === 'intrinsic' ? size : '100%',
+            width: 'auto',
+            height: 'auto',
             borderRadius: 2,
             display: 'block',
             background: 'var(--control-hover)'
